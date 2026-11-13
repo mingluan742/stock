@@ -18,8 +18,6 @@ const MAX_POINTS: number = 60;
 const CANDLE_POINTS: number = 42;
 /** 每个"交易日"的播放间隔（毫秒）：400ms 为基准，0.75 倍速 ≈ 533ms */
 const TICK_MS: number = 533;
-/** 每次固定买卖股数 */
-const TRADE_QTY: number = 100;
 
 /**
  * 实时盯盘页：
@@ -45,6 +43,26 @@ struct Index {
   @State pnlText: string = '0';
   @State pnlUp: boolean = true;
   @State chartMode: number = 0; // 0 = 分时线，1 = K线蜡烛
+
+  // 账户衍生信息
+  @State netText: string = '--';
+  @State debtText: string = '0';
+  @State feeText: string = '0';
+  @State loanAvailText: string = '0';
+  @State sellableText: string = '0 股';
+  @State bankrupt: boolean = false;
+
+  // 交易面板
+  @State showTrade: boolean = false;
+  @State tradeSide: number = 0; // 0 = 买入，1 = 卖出
+  @State tradeQtyText: string = '100';
+  @State tradeTip: string = '';
+  @State tradeSummary: string = '';
+
+  // 贷款面板
+  @State showLoan: boolean = false;
+  @State loanAmountText: string = '100000';
+  @State loanTip: string = '';
 
   @State eventList: ScenarioEvent[] = [];
   @State introText: string = '';
@@ -119,8 +137,16 @@ struct Index {
   /** 剧本载入后的页面初始化（历史与随机共用） */
   applyLoaded(): void {
     const market = AppContext.getMarket();
-    // 每一局都是独立账户：进入时重置现金与持仓
-    AppContext.getTrading().reset();
+    // 每一局都是独立账户：先按本剧本规则重置
+    const rules = market.rules;
+    if (rules !== null) {
+      AppContext.getTrading().setRules(rules);
+    } else {
+      AppContext.getTrading().reset();
+    }
+    this.bankrupt = false;
+    this.showTrade = false;
+    this.showLoan = false;
     const meta = market.meta;
     if (meta !== null) {
       this.scenarioName = meta.name;
@@ -217,9 +243,17 @@ struct Index {
     }
     this.currentPrice = bar.price;
     this.prices.push(bar.price);
+    const trading = AppContext.getTrading();
+    trading.newDay(bar.date);
     this.syncMarketText();
     this.syncAccount();
     this.drawChart();
+    if (trading.bankrupt(bar.price) && !this.bankrupt) {
+      this.bankrupt = true;
+      this.paused = true;
+      this.progressText = '已爆仓';
+      this.showTip('净资产归零，已爆仓');
+    }
     if (market.finished) {
       this.finished = true;
       this.stopPlay();
@@ -252,8 +286,8 @@ struct Index {
     const t = AppContext.getTrading();
     this.cashText = this.formatMoney(t.cash);
     this.sharesText = `${t.shares} 股`;
-    if (t.shares > 0) {
-      this.avgCostText = `成本 ${t.avgCost.toFixed(2)}`;
+    if (t.shares !== 0) {
+      this.avgCostText = t.shares > 0 ? `成本 ${t.avgCost.toFixed(2)}` : `卖空均价 ${t.avgCost.toFixed(2)}`;
       const pnl: number = t.pnl(this.currentPrice);
       this.pnlUp = pnl >= 0;
       this.pnlText = `${pnl >= 0 ? '+' : '-'}${this.formatMoney(Math.abs(pnl))}`;
@@ -262,6 +296,12 @@ struct Index {
       this.pnlUp = true;
       this.pnlText = '0';
     }
+    const net: number = t.netAsset(this.currentPrice);
+    this.netText = `${net < 0 ? '-' : ''}${this.formatMoney(Math.abs(net))}`;
+    this.debtText = this.formatMoney(t.debt);
+    this.feeText = this.formatMoney(t.feeTotal);
+    this.loanAvailText = this.formatMoney(t.loanAvailable);
+    this.sellableText = `${t.sellableShares} 股`;
   }
 
   formatMoney(v: number): string {
@@ -285,24 +325,132 @@ struct Index {
     }
   }
 
-  onBuy(): void {
-    const r: Result<Account> = AppContext.getTrading().buy(this.currentPrice, TRADE_QTY);
-    if (r.ok) {
-      this.showTip(`买入 ${TRADE_QTY} 股 @ ${this.currentPrice.toFixed(2)}`);
-    } else {
-      this.showTip(r.message);
+  // ===== 交易面板 =====
+
+  /** 打开交易面板 */
+  openTrade(side: number): void {
+    if (this.bankrupt) {
+      this.showTip('已爆仓，请重开一局');
+      return;
     }
-    this.syncAccount();
+    this.tradeSide = side;
+    this.tradeQtyText = side === 0 ? '100' : '100';
+    this.tradeTip = '';
+    this.updateTradeSummary();
+    this.showTrade = true;
   }
 
-  onSell(): void {
-    const r: Result<Account> = AppContext.getTrading().sell(this.currentPrice, TRADE_QTY);
-    if (r.ok) {
-      this.showTip(`卖出 ${TRADE_QTY} 股 @ ${this.currentPrice.toFixed(2)}`);
-    } else {
-      this.showTip(r.message);
+  parseQty(): number {
+    const n: number = parseInt(this.tradeQtyText, 10);
+    if (isNaN(n) || n <= 0) {
+      return 0;
     }
-    this.syncAccount();
+    return n;
+  }
+
+  currentFeeRate(): number {
+    const rules = AppContext.getMarket().rules;
+    if (rules === null) {
+      return 0;
+    }
+    return rules.feeRate;
+  }
+
+  /** 交易面板实时费用预览 */
+  updateTradeSummary(): void {
+    const qty: number = this.parseQty();
+    const amount: number = this.currentPrice * qty;
+    const fee: number = amount * this.currentFeeRate();
+    this.tradeSummary = `金额 ${this.formatMoney(amount)} · 手续费 ${fee.toFixed(2)}`;
+  }
+
+  fillQty(qty: number): void {
+    this.tradeQtyText = `${qty}`;
+    this.updateTradeSummary();
+  }
+
+  fillAll(): void {
+    const t = AppContext.getTrading();
+    if (this.tradeSide === 0) {
+      this.fillQty(t.maxBuyable(this.currentPrice));
+    } else {
+      this.fillQty(t.sellableShares);
+    }
+  }
+
+  confirmTrade(): void {
+    const qty: number = this.parseQty();
+    if (qty <= 0) {
+      this.tradeTip = '请输入有效数量';
+      return;
+    }
+    const t = AppContext.getTrading();
+    const r: Result<Account> = this.tradeSide === 0
+      ? t.buy(this.currentPrice, qty, this.lastRatio)
+      : t.sell(this.currentPrice, qty, this.lastRatio);
+    if (r.ok) {
+      this.showTrade = false;
+      this.showTip(this.tradeSide === 0 ? `买入 ${qty} 股成交` : `卖出 ${qty} 股成交`);
+      this.syncAccount();
+    } else {
+      this.tradeTip = r.message;
+    }
+  }
+
+  // ===== 贷款面板 =====
+
+  openLoan(): void {
+    this.loanTip = '';
+    this.loanAmountText = '100000';
+    this.showLoan = true;
+  }
+
+  fillLoan(v: number): void {
+    this.loanAmountText = `${v}`;
+  }
+
+  fillLoanMax(): void {
+    this.loanAmountText = `${Math.round(AppContext.getTrading().loanAvailable)}`;
+  }
+
+  parseLoanAmount(): number {
+    const n: number = parseInt(this.loanAmountText, 10);
+    if (isNaN(n) || n <= 0) {
+      return 0;
+    }
+    return n;
+  }
+
+  confirmBorrow(): void {
+    const amount: number = this.parseLoanAmount();
+    if (amount <= 0) {
+      this.loanTip = '请输入有效金额';
+      return;
+    }
+    const r = AppContext.getTrading().borrow(amount);
+    if (r.ok) {
+      this.showLoan = false;
+      this.showTip(`已借入 ${this.formatMoney(amount)} 元`);
+      this.syncAccount();
+    } else {
+      this.loanTip = r.message;
+    }
+  }
+
+  confirmRepay(): void {
+    const amount: number = this.parseLoanAmount();
+    if (amount <= 0) {
+      this.loanTip = '请输入有效金额';
+      return;
+    }
+    const r = AppContext.getTrading().repay(amount);
+    if (r.ok) {
+      this.showLoan = false;
+      this.showTip(`已还款 ${this.formatMoney(amount)} 元`);
+      this.syncAccount();
+    } else {
+      this.loanTip = r.message;
+    }
   }
 
   /** 切换图表形态 */
@@ -657,81 +805,136 @@ struct Index {
         .border({ width: 1, color: this.eventList.length > 0 ? '#4A3F2A' : '#22262F' })
         .alignItems(HorizontalAlign.Start)
 
-        // 账户栏
-        Row() {
-          Column() {
-            Text('现金')
-              .fontSize(10)
-              .fontColor(AppConfig.COLOR_SUB)
-            Text(this.cashText)
-              .fontSize(14)
-              .fontColor(AppConfig.COLOR_TEXT)
-              .margin({ top: 4 })
-          }
-          .alignItems(HorizontalAlign.Start)
-          .layoutWeight(1)
+        // 账户栏：第一行资金/持仓，第二行净值/负债/手续费
+        Column() {
+          Row() {
+            Column() {
+              Text('现金')
+                .fontSize(10)
+                .fontColor(AppConfig.COLOR_SUB)
+              Text(this.cashText)
+                .fontSize(14)
+                .fontColor(AppConfig.COLOR_TEXT)
+                .margin({ top: 4 })
+            }
+            .alignItems(HorizontalAlign.Start)
+            .layoutWeight(1)
 
-          Column() {
-            Text('持仓')
-              .fontSize(10)
-              .fontColor(AppConfig.COLOR_SUB)
-            Text(this.sharesText)
-              .fontSize(14)
-              .fontColor(AppConfig.COLOR_TEXT)
-              .margin({ top: 4 })
-            Text(this.avgCostText)
-              .fontSize(10)
-              .fontColor(AppConfig.COLOR_SUB)
-              .margin({ top: 2 })
-          }
-          .alignItems(HorizontalAlign.Center)
-          .layoutWeight(1)
+            Column() {
+              Text('持仓')
+                .fontSize(10)
+                .fontColor(AppConfig.COLOR_SUB)
+              Text(this.sharesText)
+                .fontSize(14)
+                .fontColor(AppConfig.COLOR_TEXT)
+                .margin({ top: 4 })
+              Text(this.avgCostText)
+                .fontSize(10)
+                .fontColor(AppConfig.COLOR_SUB)
+                .margin({ top: 2 })
+            }
+            .alignItems(HorizontalAlign.Center)
+            .layoutWeight(1)
 
-          Column() {
-            Text('浮动盈亏')
-              .fontSize(10)
-              .fontColor(AppConfig.COLOR_SUB)
-            Text(this.pnlText)
-              .fontSize(14)
-              .fontColor(this.pnlUp ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN)
-              .margin({ top: 4 })
+            Column() {
+              Text('浮动盈亏')
+                .fontSize(10)
+                .fontColor(AppConfig.COLOR_SUB)
+              Text(this.pnlText)
+                .fontSize(14)
+                .fontColor(this.pnlUp ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN)
+                .margin({ top: 4 })
+            }
+            .alignItems(HorizontalAlign.End)
+            .layoutWeight(1)
           }
-          .alignItems(HorizontalAlign.End)
-          .layoutWeight(1)
+          .width('100%')
+
+          Divider()
+            .color('#23272F')
+            .margin({ top: 8, bottom: 8 })
+
+          Row() {
+            Column() {
+              Text('净资产')
+                .fontSize(10)
+                .fontColor(AppConfig.COLOR_SUB)
+              Text(this.netText)
+                .fontSize(13)
+                .fontColor(AppConfig.COLOR_TEXT)
+                .margin({ top: 3 })
+            }
+            .alignItems(HorizontalAlign.Start)
+            .layoutWeight(1)
+
+            Column() {
+              Text('负债')
+                .fontSize(10)
+                .fontColor(AppConfig.COLOR_SUB)
+              Text(this.debtText)
+                .fontSize(13)
+                .fontColor('#C9A227')
+                .margin({ top: 3 })
+            }
+            .alignItems(HorizontalAlign.Center)
+            .layoutWeight(1)
+
+            Column() {
+              Text('手续费')
+                .fontSize(10)
+                .fontColor(AppConfig.COLOR_SUB)
+              Text(this.feeText)
+                .fontSize(13)
+                .fontColor(AppConfig.COLOR_SUB)
+                .margin({ top: 3 })
+            }
+            .alignItems(HorizontalAlign.End)
+            .layoutWeight(1)
+          }
+          .width('100%')
         }
         .width('100%')
-        .padding({ left: 20, right: 20, top: 12 })
+        .padding({ left: 20, right: 20, top: 10 })
 
         Blank()
 
-        // 操作区：播放控制 + 买卖常驻
-        Row({ space: 10 }) {
+        // 操作区：播放控制 / 买入 / 卖出 / 资金
+        Row({ space: 8 }) {
           Button(this.finished ? (this.mode === 'random' ? '再来一局' : '重播剧情') : (this.paused ? '继续播放' : '暂停播放'))
             .layoutWeight(1)
-            .height(46)
-            .fontSize(14)
+            .height(44)
+            .fontSize(13)
             .backgroundColor('#2A2F3A')
             .fontColor(AppConfig.COLOR_ACCENT)
             .onClick(() => {
               this.togglePause();
             })
-          Button(`买入 ${TRADE_QTY} 股`)
+          Button('买入')
             .layoutWeight(1)
-            .height(46)
+            .height(44)
             .fontSize(14)
             .backgroundColor(AppConfig.COLOR_UP)
             .fontColor('#FFFFFF')
             .onClick(() => {
-              this.onBuy();
+              this.openTrade(0);
             })
-          Button(`卖出 ${TRADE_QTY} 股`)
+          Button('卖出')
             .layoutWeight(1)
-            .height(46)
+            .height(44)
             .fontSize(14)
             .backgroundColor(AppConfig.COLOR_DOWN)
             .fontColor('#FFFFFF')
             .onClick(() => {
-              this.onSell();
+              this.openTrade(1);
+            })
+          Button('资金')
+            .layoutWeight(1)
+            .height(44)
+            .fontSize(13)
+            .backgroundColor('#2A2F3A')
+            .fontColor('#D4A34B')
+            .onClick(() => {
+              this.openLoan();
             })
         }
         .width('100%')
@@ -740,6 +943,299 @@ struct Index {
       .width('100%')
       .height('100%')
 
+      // ===== 交易面板 =====
+      if (this.showTrade) {
+        Column() {
+          Column() {
+            Row() {
+              Text(this.tradeSide === 0 ? '买入' : '卖出')
+                .fontSize(18)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(this.tradeSide === 0 ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN)
+              Blank()
+              Text('✕')
+                .fontSize(16)
+                .fontColor(AppConfig.COLOR_SUB)
+                .padding(4)
+                .onClick(() => {
+                  this.showTrade = false;
+                })
+            }
+            .width('100%')
+
+            Text(this.tradeSide === 0
+              ? `现价 ${this.priceText} · 可用现金 ${this.cashText}`
+              : `现价 ${this.priceText} · 可卖 ${this.sellableText}`)
+              .fontSize(11)
+              .fontColor(AppConfig.COLOR_SUB)
+              .margin({ top: 8 })
+
+            Row() {
+              TextInput({ text: this.tradeQtyText, placeholder: '数量（股）' })
+                .type(InputType.Number)
+                .layoutWeight(1)
+                .height(44)
+                .fontSize(15)
+                .fontColor(AppConfig.COLOR_TEXT)
+                .placeholderColor('#6B717C')
+                .backgroundColor('#262B35')
+                .borderRadius(8)
+                .onChange((v: string) => {
+                  this.tradeQtyText = v;
+                  this.updateTradeSummary();
+                })
+              Text('股')
+                .fontSize(12)
+                .fontColor(AppConfig.COLOR_SUB)
+                .margin({ left: 8 })
+            }
+            .width('100%')
+            .margin({ top: 12 })
+
+            Row({ space: 8 }) {
+              Button('100')
+                .layoutWeight(1)
+                .height(34)
+                .fontSize(12)
+                .backgroundColor('#262B35')
+                .fontColor('#B8BDC7')
+                .onClick(() => {
+                  this.fillQty(100);
+                })
+              Button('500')
+                .layoutWeight(1)
+                .height(34)
+                .fontSize(12)
+                .backgroundColor('#262B35')
+                .fontColor('#B8BDC7')
+                .onClick(() => {
+                  this.fillQty(500);
+                })
+              Button('1000')
+                .layoutWeight(1)
+                .height(34)
+                .fontSize(12)
+                .backgroundColor('#262B35')
+                .fontColor('#B8BDC7')
+                .onClick(() => {
+                  this.fillQty(1000);
+                })
+              Button('全仓')
+                .layoutWeight(1)
+                .height(34)
+                .fontSize(12)
+                .backgroundColor('#262B35')
+                .fontColor(AppConfig.COLOR_ACCENT)
+                .onClick(() => {
+                  this.fillAll();
+                })
+            }
+            .width('100%')
+            .margin({ top: 10 })
+
+            Text(this.tradeSummary)
+              .fontSize(11)
+              .fontColor('#8A8F99')
+              .margin({ top: 10 })
+
+            if (this.tradeTip !== '') {
+              Text(this.tradeTip)
+                .fontSize(11)
+                .fontColor(AppConfig.COLOR_UP)
+                .margin({ top: 8 })
+            }
+
+            Button(this.tradeSide === 0 ? '确认买入' : '确认卖出')
+              .width('100%')
+              .height(46)
+              .fontSize(15)
+              .margin({ top: 16 })
+              .backgroundColor(this.tradeSide === 0 ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN)
+              .fontColor('#FFFFFF')
+              .onClick(() => {
+                this.confirmTrade();
+              })
+          }
+          .width('100%')
+          .padding(20)
+          .backgroundColor('#1C1F27')
+          .borderRadius({ topLeft: 20, topRight: 20 })
+          .alignItems(HorizontalAlign.Start)
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.End)
+        .backgroundColor('rgba(0,0,0,0.55)')
+      }
+
+      // ===== 贷款面板 =====
+      if (this.showLoan) {
+        Column() {
+          Column() {
+            Row() {
+              Text('资金与贷款')
+                .fontSize(18)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(AppConfig.COLOR_TEXT)
+              Blank()
+              Text('✕')
+                .fontSize(16)
+                .fontColor(AppConfig.COLOR_SUB)
+                .padding(4)
+                .onClick(() => {
+                  this.showLoan = false;
+                })
+            }
+            .width('100%')
+
+            Row() {
+              Column() {
+                Text('可用现金')
+                  .fontSize(10)
+                  .fontColor(AppConfig.COLOR_SUB)
+                Text(this.cashText)
+                  .fontSize(14)
+                  .fontColor(AppConfig.COLOR_TEXT)
+                  .margin({ top: 4 })
+              }
+              .alignItems(HorizontalAlign.Start)
+              .layoutWeight(1)
+
+              Column() {
+                Text('当前负债')
+                  .fontSize(10)
+                  .fontColor(AppConfig.COLOR_SUB)
+                Text(this.debtText)
+                  .fontSize(14)
+                  .fontColor('#C9A227')
+                  .margin({ top: 4 })
+              }
+              .alignItems(HorizontalAlign.Center)
+              .layoutWeight(1)
+
+              Column() {
+                Text('可借额度')
+                  .fontSize(10)
+                  .fontColor(AppConfig.COLOR_SUB)
+                Text(this.loanAvailText)
+                  .fontSize(14)
+                  .fontColor(AppConfig.COLOR_TEXT)
+                  .margin({ top: 4 })
+              }
+              .alignItems(HorizontalAlign.End)
+              .layoutWeight(1)
+            }
+            .width('100%')
+            .margin({ top: 16 })
+
+            Text('年化 8%，每个交易日按复利计息')
+              .fontSize(10)
+              .fontColor('#6B717C')
+              .margin({ top: 10 })
+
+            Row() {
+              TextInput({ text: this.loanAmountText, placeholder: '金额（元）' })
+                .type(InputType.Number)
+                .layoutWeight(1)
+                .height(44)
+                .fontSize(15)
+                .fontColor(AppConfig.COLOR_TEXT)
+                .placeholderColor('#6B717C')
+                .backgroundColor('#262B35')
+                .borderRadius(8)
+                .onChange((v: string) => {
+                  this.loanAmountText = v;
+                })
+              Text('元')
+                .fontSize(12)
+                .fontColor(AppConfig.COLOR_SUB)
+                .margin({ left: 8 })
+            }
+            .width('100%')
+            .margin({ top: 12 })
+
+            Row({ space: 8 }) {
+              Button('10万')
+                .layoutWeight(1)
+                .height(34)
+                .fontSize(12)
+                .backgroundColor('#262B35')
+                .fontColor('#B8BDC7')
+                .onClick(() => {
+                  this.fillLoan(100000);
+                })
+              Button('20万')
+                .layoutWeight(1)
+                .height(34)
+                .fontSize(12)
+                .backgroundColor('#262B35')
+                .fontColor('#B8BDC7')
+                .onClick(() => {
+                  this.fillLoan(200000);
+                })
+              Button('50万')
+                .layoutWeight(1)
+                .height(34)
+                .fontSize(12)
+                .backgroundColor('#262B35')
+                .fontColor('#B8BDC7')
+                .onClick(() => {
+                  this.fillLoan(500000);
+                })
+              Button('用完额度')
+                .layoutWeight(1.4)
+                .height(34)
+                .fontSize(12)
+                .backgroundColor('#262B35')
+                .fontColor(AppConfig.COLOR_ACCENT)
+                .onClick(() => {
+                  this.fillLoanMax();
+                })
+            }
+            .width('100%')
+            .margin({ top: 10 })
+
+            if (this.loanTip !== '') {
+              Text(this.loanTip)
+                .fontSize(11)
+                .fontColor('#E64545')
+                .margin({ top: 8 })
+            }
+
+            Row({ space: 10 }) {
+              Button('借入')
+                .layoutWeight(1)
+                .height(46)
+                .fontSize(15)
+                .backgroundColor(AppConfig.COLOR_ACCENT)
+                .fontColor('#12141A')
+                .onClick(() => {
+                  this.confirmBorrow();
+                })
+              Button('还款')
+                .layoutWeight(1)
+                .height(46)
+                .fontSize(15)
+                .backgroundColor('#2A2F3A')
+                .fontColor(AppConfig.COLOR_TEXT)
+                .onClick(() => {
+                  this.confirmRepay();
+                })
+            }
+            .width('100%')
+            .margin({ top: 16 })
+          }
+          .width('100%')
+          .padding(20)
+          .backgroundColor('#1C1F27')
+          .borderRadius({ topLeft: 20, topRight: 20 })
+          .alignItems(HorizontalAlign.Start)
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.End)
+        .backgroundColor('rgba(0,0,0,0.55)')
+      }
     }
     .width('100%')
     .height('100%')

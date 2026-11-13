@@ -9,6 +9,10 @@ export class AppConfig {
   static readonly INIT_CASH: number = 1000000;
   /** 默认加载的剧本 */
   static readonly DEFAULT_SCENARIO: string = 'crash-1929';
+  /** 借款额度上限（等于初始本金） */
+  static readonly MAX_LOAN: number = 1000000;
+  /** 贷款日利率：年化 8%，按每学期 250 个交易日折算 */
+  static readonly DAILY_LOAN_RATE: number = 0.08 / 250;
 
   /** 涨（中国配色：红涨） */
   static readonly COLOR_UP: string = '#E64545';
