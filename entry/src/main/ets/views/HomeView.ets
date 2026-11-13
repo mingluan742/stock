@@ -19,6 +19,8 @@ export struct HomeView {
   onGoAchievement: () => void = () => {};
   /** 重看新手教程 */
   onGoTutorial: () => void = () => {};
+  /** 模型设置 */
+  onGoSettings: () => void = () => {};
 
   @State hasResume: boolean = false;
   @State resumeTitle: string = '';
@@ -195,13 +197,24 @@ export struct HomeView {
         this.onGoAchievement();
       })
 
-      Text('新手教程 ›')
-        .fontSize(11)
-        .fontColor('#8B909A')
-        .padding({ top: 10, bottom: 4 })
-        .onClick(() => {
-          this.onGoTutorial();
-        })
+      Row({ space: 18 }) {
+        Text('新手教程 ›')
+          .fontSize(11)
+          .fontColor('#8B909A')
+          .padding({ top: 10, bottom: 4 })
+          .onClick(() => {
+            this.onGoTutorial();
+          })
+        Text('模型设置 ›')
+          .fontSize(11)
+          .fontColor('#8B909A')
+          .padding({ top: 10, bottom: 4 })
+          .onClick(() => {
+            this.onGoSettings();
+          })
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.Center)
 
       Blank()
 

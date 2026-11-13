@@ -11,6 +11,10 @@
     {
       "name": "EntryAbility_label",
       "value": "label"
+    },
+    {
+      "name": "internet_reason",
+      "value": "调用大模型接口生成复盘点评"
     }
   ]
 }

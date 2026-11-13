@@ -3,10 +3,10 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: 'a476e366-a829-4e4c-8fc0-18c4153bbd8e'
-  PropagateID: 'a476e366-a829-4e4c-8fc0-18c4153bbd8e'
-  ReservedCode1: 'bef09bb1-10d8-4369-90df-578240c3887a'
-  ReservedCode2: 'bef09bb1-10d8-4369-90df-578240c3887a'
+  ProduceID: 'ab5d23ad-0c14-4e43-9d9a-17205ecba221'
+  PropagateID: 'ab5d23ad-0c14-4e43-9d9a-17205ecba221'
+  ReservedCode1: '9e19c6f8-0ed6-4126-89dd-118de41da679'
+  ReservedCode2: '9e19c6f8-0ed6-4126-89dd-118de41da679'
 ---
 
 # 涨跌实验室（StockLab）
@@ -39,6 +39,7 @@ AIGC:
 | 结算复盘 | 收益率、最大回撤、交易笔数、胜率、手续费；全程行情曲线标注买卖点；逐笔流水；与"买入持有"对照 |
 | 成就系统 | 15 个成就（首次出手 / 逆向思维 / 五十倍狂热 / 归零体验 / 空仓到底 等），实时判定、本机持久化，主界面可查看收集进度；未解锁的成就只显示名字，条件在达成后揭晓 |
 | 新手引导 | 首次打开先问「新手 / 老手」：新手进 4 步图文教程，老手直接开始；主界面可随时重看 |
+| AI 复盘点评 | 接入兼容 OpenAI 协议的大模型接口，把收益/回撤/胜率/流水交给模型生成个性化点评；未配置 Key 或请求失败时自动退回本地文案 |
 
 ## 技术架构
 
@@ -47,7 +48,7 @@ AIGC:
 ```
 L1 表现层   views/（HomeView / HistoryView / TradeView / ResultView / AchievementView / TutorialView）+ pages/App.ets（状态机入口）
 L2 调度层   视图内状态与交互编排（@State / @Prop）
-L3 业务层   services/（MarketService 行情、TradingService 交易、RandomScenarioService 随机生成、AchievementService 成就）
+L3 业务层   services/（MarketService 行情、TradingService 交易、RandomScenarioService 随机生成、AchievementService 成就、AiService 大模型）
 L4 数据层   repository/（IMarketDataSource 接口 + BuiltinScenarioSource 实现）
 L5 存储层   core/SaveService（AppStorage + PersistentStorage JSON 快照）
 横切 A     core/（Result 统一返回、EventBus 事件总线、AppContext 服务定位）
@@ -58,9 +59,9 @@ L5 存储层   core/SaveService（AppStorage + PersistentStorage JSON 快照）
 
 ```
 entry/src/main/ets/
-├─ pages/App.ets            唯一入口页，状态机切换七个视图
-├─ views/                   七个视图组件（引导询问 / 教程 / 主界面 / 剧本列表 / 盯盘 / 复盘 / 成就）
-├─ services/                行情、交易、随机生成
+├─ pages/App.ets            唯一入口页，状态机切换八个视图
+├─ views/                   八个视图（引导询问 / 教程 / 主界面 / 剧本列表 / 盯盘 / 复盘 / 成就 / 设置）
+├─ services/                行情、交易、随机生成、成就、大模型
 ├─ repository/              数据源接口与内置实现
 │  └─ data/                 ArkTS 内置剧本数据（rawfile 不可用时的回退）
 ├─ core/                    Result / EventBus / AppContext / SaveService
@@ -73,7 +74,7 @@ entry/src/main/ets/
 
 - **接口驱动数据源**：`IMarketDataSource` 定义"剧本目录 + 加载剧本"，`BuiltinScenarioSource` 优先读 rawfile，失败自动回退 ArkTS 内置数据（兼容预览器）；
 - **规则参数化**：每个剧本自带 `rules`（涨跌停、T+1、费率、能否做空），同一套交易代码跑出不同市场；
-- **状态机代替路由**：六视图用 `@State view` 切换，避免预览器不支持 router 的问题；
+- **状态机代替路由**：八视图用 `@State view` 切换，避免预览器不支持 router 的问题；
 - **确定性伪随机**：K线高低点用 `Math.sin` 按蜡烛序号派生，重绘不闪烁；
 - **单例装配**：`AppContext` 统一创建服务，换数据源只改一行。
 
@@ -88,6 +89,16 @@ entry/src/main/ets/
 | 贷款 | 普通借款上限 100 万，日利率 0.032%（年化 8% / 250 交易日），复利计息；杠杆配资另受总债务 5000 万上限约束 |
 | 杠杆 | 保证金 = 市值 / 倍数（最高 50 倍）；融资额 = 市值 - 保证金，计入负债（受总债务 5000 万上限约束） |
 | 爆仓 | 净资产 = 现金 + 持仓市值 - 负债 ≤ 0 即爆仓 |
+
+## 大模型配置
+
+结算页的 AI 复盘需要一个兼容 OpenAI `/chat/completions` 的接口：
+
+1. 主界面底部 →「模型设置 ›」
+2. 填接口地址（默认 `https://api.deepseek.com/v1/chat/completions`）、模型名（默认 `deepseek-chat`）、API Key
+3. 保存后回到结算页，点「生成 AI 点评」
+
+Key 只保存在本机（PersistentStorage），代码中不内置任何密钥；未填 Key 时自动使用本地文案。也可以换成通义、智谱等兼容接口。
 
 ## 单元测试
 
@@ -116,6 +127,7 @@ entry/src/main/ets/
 | v1.4 | 新手教程：首次启动 4 步引导 + 口令「我是老手」跳过 + 主界面可重看 |
 | v1.5 | 首次打开先询问「新手 / 老手」，据此决定是否进教程；新手中途退出下次续看 |
 | v1.6 | 多空双向玩法：做多/做空按钮随持仓自动切换为加多/平多/平空/加空，新增一键平仓，做空敏口改为净资产 50 倍 |
+| v1.7 | 接入大模型：AI 复盘点评 + 模型设置页（Key 仅存本机）+ 失败自动退回本地文案 |
 
 ## 待办
 

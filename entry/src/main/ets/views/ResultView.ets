@@ -2,6 +2,7 @@ import { AppConfig } from '../config/AppConfig';
 import { AppContext } from '../core/AppContext';
 import { AchievementItem } from '../models/Achievement';
 import { TradeRecord } from '../models/TradeRecord';
+import { AiService, ReviewInput } from '../services/AiService';
 
 /** 复盘页流水展示项（把数值格式化成文本，避免模板里做运算） */
 interface FlowItem {
@@ -32,6 +33,8 @@ export struct ResultView {
   onBack: () => void = () => {};
   /** 重播本局 */
   onReplay: () => void = () => {};
+  /** 去模型设置 */
+  onGoSettings: () => void = () => {};
 
   @State scenarioName: string = '';
   @State eraText: string = '';
@@ -49,6 +52,15 @@ export struct ResultView {
   @State flows: FlowItem[] = [];
   /** 本局新解锁的成就 */
   @State newItems: AchievementItem[] = [];
+  // AI 复盘
+  @State aiText: string = '';
+  @State aiLoading: boolean = false;
+  @State aiError: string = '';
+  @State hasKey: boolean = false;
+
+  private retValue: number = 0;
+  private benchValue: number = 0;
+  private isBankrupt: boolean = false;
 
   private prices: number[] = [];
   private dateIndex: Map<string, number> = new Map<string, number>();
@@ -81,6 +93,8 @@ export struct ResultView {
     const net: number = trading.netAsset(lastPrice);
     const ret: number = (net - AppConfig.INIT_CASH) / AppConfig.INIT_CASH;
     this.returnUp = ret >= 0;
+    this.retValue = ret;
+    this.isBankrupt = net <= 0;
     this.returnText = `${ret >= 0 ? '+' : ''}${(ret * 100).toFixed(2)}%`;
     this.netText = `${net < 0 ? '-' : ''}${this.formatMoney(Math.abs(net))}`;
     this.initText = this.formatMoney(AppConfig.INIT_CASH);
@@ -91,13 +105,15 @@ export struct ResultView {
     this.debtText = this.formatMoney(trading.debt);
 
     // 同期标的涨跌：对照"什么都不做"的结果
+    let bench: number = 0;
     if (this.prices.length >= 2 && this.prices[0] > 0) {
-      const bench: number = (this.prices[this.prices.length - 1] - this.prices[0]) / this.prices[0];
+      bench = (this.prices[this.prices.length - 1] - this.prices[0]) / this.prices[0];
       const sign: string = bench >= 0 ? '+' : '';
       this.benchText = `同期标的 ${sign}${(bench * 100).toFixed(2)}%，${ret >= bench ? '跑赢' : '跑输'} ${Math.abs((ret - bench) * 100).toFixed(2)} 个百分点`;
     } else {
       this.benchText = '';
     }
+    this.benchValue = bench;
 
     if (trading.tradeCount === 0) {
       this.verdictText = '一局下来没有出手。在市场里，"不做"也是一种选择。';
@@ -113,6 +129,7 @@ export struct ResultView {
 
     this.buildFlows();
     this.newItems = AppContext.getAchievements().sessionUnlocked();
+    this.hasKey = AiService.hasKey;
     this.drawEquity();
   }
 
@@ -131,6 +148,59 @@ export struct ResultView {
       });
     }
     this.flows = list;
+  }
+
+  /** 把最近 20 笔交易整理成给模型看的摘要 */
+  buildFlowText(): string {
+    const list: TradeRecord[] = this.records;
+    const start: number = Math.max(0, list.length - 20);
+    let out: string = '';
+    for (let i = start; i < list.length; i++) {
+      const r: TradeRecord = list[i];
+      if (out !== '') {
+        out += '\n';
+      }
+      let pnl: string = '开仓';
+      if (r.realized !== 0) {
+        pnl = r.realized > 0 ? `+${Math.round(r.realized)}` : `${Math.round(r.realized)}`;
+      }
+      out += `${r.date} ${r.side} ${r.price.toFixed(2)} ${r.qty}股 ${pnl}`;
+    }
+    return out;
+  }
+
+  /** 请求 AI 复盘点评 */
+  async requestAi(): Promise<void> {
+    if (!AiService.hasKey) {
+      this.aiError = '还没有配置 API Key，去主界面「模型设置」填一个';
+      return;
+    }
+    this.aiLoading = true;
+    this.aiError = '';
+    try {
+      const t = AppContext.getTrading();
+      const input: ReviewInput = {
+        scenarioName: this.scenarioName,
+        era: this.eraText,
+        mode: this.mode,
+        returnPct: this.retValue,
+        benchPct: this.benchValue,
+        maxDrawdown: t.maxDrawdown,
+        tradeCount: t.tradeCount,
+        winRate: t.winRate,
+        feeTotal: t.feeTotal,
+        maxLeverage: t.maxLeverageUsed,
+        debt: t.debt,
+        bankrupt: this.isBankrupt,
+        flowText: this.buildFlowText()
+      };
+      const text: string = await AiService.review(input);
+      this.aiText = text;
+    } catch (err) {
+      const e = err as Error;
+      this.aiError = `AI 点评失败：${e.message}`;
+    }
+    this.aiLoading = false;
   }
 
   formatMoney(v: number): string {
@@ -416,6 +486,92 @@ export struct ResultView {
             .margin({ top: 10 })
             .backgroundColor('#181C24')
             .borderRadius(10)
+
+          // AI 复盘点评
+          Column() {
+            Row() {
+              Text('AI 复盘教练')
+                .fontSize(11)
+                .fontColor(AppConfig.COLOR_ACCENT)
+              Blank()
+              if (this.aiText !== '' && !this.aiLoading) {
+                Text('重新生成')
+                  .fontSize(10)
+                  .fontColor(AppConfig.COLOR_SUB)
+                  .padding(4)
+                  .onClick(() => {
+                    this.requestAi();
+                  })
+              }
+            }
+            .width('100%')
+
+            if (this.aiLoading) {
+              Row({ space: 8 }) {
+                LoadingProgress()
+                  .width(16)
+                  .height(16)
+                  .color(AppConfig.COLOR_ACCENT)
+                Text('正在读这一局的操作…')
+                  .fontSize(11)
+                  .fontColor(AppConfig.COLOR_SUB)
+              }
+              .width('100%')
+              .margin({ top: 10 })
+            } else if (this.aiText !== '') {
+              Text(this.aiText)
+                .fontSize(12)
+                .fontColor('#C9CDD6')
+                .lineHeight(20)
+                .width('100%')
+                .margin({ top: 8 })
+            } else {
+              Text('把收益、回撤、胜率和每笔流水交给模型，生成一段只针对这一局的点评。')
+                .fontSize(11)
+                .fontColor('#8A8F99')
+                .lineHeight(18)
+                .width('100%')
+                .margin({ top: 8 })
+              if (this.hasKey) {
+                Button('生成 AI 点评')
+                  .height(36)
+                  .fontSize(12)
+                  .margin({ top: 10 })
+                  .backgroundColor('#2A2F3A')
+                  .fontColor(AppConfig.COLOR_ACCENT)
+                  .onClick(() => {
+                    this.requestAi();
+                  })
+              } else {
+                Row({ space: 10 }) {
+                  Button('去设置 API Key')
+                    .height(36)
+                    .fontSize(12)
+                    .backgroundColor('#2A2F3A')
+                    .fontColor(AppConfig.COLOR_ACCENT)
+                    .onClick(() => {
+                      this.onGoSettings();
+                    })
+                }
+                .margin({ top: 10 })
+              }
+            }
+
+            if (this.aiError !== '') {
+              Text(this.aiError)
+                .fontSize(10)
+                .fontColor('#E64545')
+                .lineHeight(16)
+                .margin({ top: 8 })
+                .width('100%')
+            }
+          }
+          .width('100%')
+          .padding(14)
+          .margin({ top: 10 })
+          .backgroundColor(AppConfig.COLOR_CARD)
+          .borderRadius(12)
+          .alignItems(HorizontalAlign.Start)
 
           // 行情曲线 + 买卖点
           Column() {

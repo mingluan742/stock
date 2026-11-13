@@ -5,6 +5,7 @@ import { AchievementView } from '../views/AchievementView';
 import { HistoryView } from '../views/HistoryView';
 import { HomeView } from '../views/HomeView';
 import { ResultView } from '../views/ResultView';
+import { SettingsView } from '../views/SettingsView';
 import { TradeView } from '../views/TradeView';
 import { TutorialView } from '../views/TutorialView';
 import { WelcomeView } from '../views/WelcomeView';
@@ -25,6 +26,8 @@ struct App {
   @State tradeId: string = AppConfig.DEFAULT_SCENARIO;
   /** 下一局是否从存档继续 */
   @State resume: boolean = false;
+  /** 从哪个视图进入设置页（返回时回到原处） */
+  @State settingsFrom: string = 'home';
 
   /** 首次启动先问是不是新手；选了新手但没看完的，下次接着看 */
   aboutToAppear(): void {
@@ -68,6 +71,10 @@ struct App {
           },
           onGoTutorial: () => {
             this.view = 'tutorial';
+          },
+          onGoSettings: () => {
+            this.settingsFrom = 'home';
+            this.view = 'settings';
           }
         })
       } else if (this.view === 'history') {
@@ -105,6 +112,12 @@ struct App {
             this.view = 'home';
           }
         })
+      } else if (this.view === 'settings') {
+        SettingsView({
+          onBack: () => {
+            this.view = this.settingsFrom;
+          }
+        })
       } else if (this.view === 'trade') {
         TradeView({
           mode: this.tradeMode,
@@ -127,6 +140,10 @@ struct App {
           onReplay: () => {
             this.resume = false;
             this.view = 'trade';
+          },
+          onGoSettings: () => {
+            this.settingsFrom = 'result';
+            this.view = 'settings';
           }
         })
       }
