@@ -9,6 +9,7 @@ export interface AccountSnapshot {
   shares: number;
   cost: number;
   loanPrincipal: number;
+  leveragePrincipal: number;
   loanInterest: number;
   feeTotal: number;
 }
@@ -34,8 +35,10 @@ export class TradingService {
   private todayBought: number = 0;
   private lastDate: string = '';
   private feeTotalValue: number = 0;
-  /** 贷款本金 */
+  /** 贷款本金（普通借款） */
   private loanPrincipal: number = 0;
+  /** 杠杆融资本金 */
+  private leveragePrincipal: number = 0;
   /** 累计未还利息 */
   private loanInterest: number = 0;
 
@@ -50,7 +53,7 @@ export class TradingService {
     if (date !== this.lastDate) {
       this.lastDate = date;
       this.todayBought = 0;
-      const principalAndInterest: number = this.loanPrincipal + this.loanInterest;
+      const principalAndInterest: number = this.loanPrincipal + this.leveragePrincipal + this.loanInterest;
       if (principalAndInterest > 0) {
         this.loanInterest += principalAndInterest * AppConfig.DAILY_LOAN_RATE;
       }
@@ -70,7 +73,7 @@ export class TradingService {
     return Result.success(this.account);
   }
 
-  /** 还款：现金扣减，先冲抵本金，再冲抵利息 */
+  /** 还款：现金扣减，先冲抵杠杆融资，再冲抵普通借款，最后冲利息 */
   repay(amount: number): Result<Account> {
     if (amount <= 0) {
       return Result.fail<Account>('还款金额必须大于 0');
@@ -84,9 +87,12 @@ export class TradingService {
     const actual: number = Math.min(amount, this.debt);
     this.account.cash -= actual;
     let remain: number = actual;
-    const payPrincipal: number = Math.min(remain, this.loanPrincipal);
-    this.loanPrincipal -= payPrincipal;
-    remain -= payPrincipal;
+    const payLev: number = Math.min(remain, this.leveragePrincipal);
+    this.leveragePrincipal -= payLev;
+    remain -= payLev;
+    const payLoan: number = Math.min(remain, this.loanPrincipal);
+    this.loanPrincipal -= payLoan;
+    remain -= payLoan;
     this.loanInterest -= remain;
     if (this.loanInterest < 0) {
       this.loanInterest = 0;
@@ -116,17 +122,18 @@ export class TradingService {
         return Result.fail<Account>('现金不足（含手续费）');
       }
     } else {
-      // 杠杆：按倍数强制配资，自有资金只承担保证金
-      const margin: number = amount / leverage;
+      // 杠杆：按倍数强制配资，自有资金只承担保证金（最高 50 倍）
+      const lev: number = Math.min(leverage, AppConfig.MAX_LEVERAGE);
+      const margin: number = amount / lev;
       if (this.account.cash < margin + fee) {
         return Result.fail<Account>(`保证金不足，需 ${Math.round(margin + fee)}`);
       }
       const borrowAmt: number = amount - margin;
-      if (borrowAmt > this.loanAvailable) {
-        return Result.fail<Account>('融资额度不足');
+      if (this.debt + borrowAmt > AppConfig.MAX_DEBT) {
+        return Result.fail<Account>('融资金额超出总债务上限');
       }
       this.account.cash += borrowAmt;
-      this.loanPrincipal += borrowAmt;
+      this.leveragePrincipal += borrowAmt;
     }
 
     // 若当前是空头，先按均价平空，剩余部分转为多头
@@ -230,13 +237,21 @@ export class TradingService {
     return Math.max(0, s);
   }
 
-  /** 当前现金最多可买股数（按整手 100 股，含手续费） */
-  maxBuyable(price: number): number {
+  /** 当前现金最多可买股数（按整手 100 股，含手续费；leverage 为杠杆倍数） */
+  maxBuyable(price: number, leverage: number = 1): number {
     if (price <= 0) {
       return 0;
     }
+    let lev: number = leverage;
+    if (lev < 1) {
+      lev = 1;
+    }
+    if (lev > AppConfig.MAX_LEVERAGE) {
+      lev = AppConfig.MAX_LEVERAGE;
+    }
+    const budget: number = this.account.cash * lev;
     const perShare: number = price * (1 + this.rules.feeRate);
-    const qty: number = Math.floor(this.account.cash / perShare / 100) * 100;
+    const qty: number = Math.floor(budget / perShare / 100) * 100;
     return qty > 0 ? qty : 0;
   }
 
@@ -245,14 +260,19 @@ export class TradingService {
     return this.feeTotalValue;
   }
 
-  /** 当前债务总额（本金 + 利息） */
+  /** 当前债务总额（本金 + 利息，含杠杆融资） */
   get debt(): number {
-    return this.loanPrincipal + this.loanInterest;
+    return this.loanPrincipal + this.leveragePrincipal + this.loanInterest;
   }
 
-  /** 未还本金 */
+  /** 未还本金（普通借款 + 杠杆融资） */
   get debtPrincipal(): number {
-    return this.loanPrincipal;
+    return this.loanPrincipal + this.leveragePrincipal;
+  }
+
+  /** 杠杆融资本金 */
+  get leverageDebt(): number {
+    return this.leveragePrincipal;
   }
 
   /** 累计利息 */
@@ -283,6 +303,7 @@ export class TradingService {
     this.lastDate = '';
     this.feeTotalValue = 0;
     this.loanPrincipal = 0;
+    this.leveragePrincipal = 0;
     this.loanInterest = 0;
   }
 
@@ -293,6 +314,7 @@ export class TradingService {
       shares: this.account.shares,
       cost: this.account.cost,
       loanPrincipal: this.loanPrincipal,
+      leveragePrincipal: this.leveragePrincipal,
       loanInterest: this.loanInterest,
       feeTotal: this.feeTotalValue
     };
@@ -304,6 +326,7 @@ export class TradingService {
     this.account.shares = s.shares;
     this.account.cost = s.cost;
     this.loanPrincipal = s.loanPrincipal;
+    this.leveragePrincipal = s.leveragePrincipal === undefined ? 0 : s.leveragePrincipal;
     this.loanInterest = s.loanInterest;
     this.feeTotalValue = s.feeTotal;
     this.todayBought = 0;

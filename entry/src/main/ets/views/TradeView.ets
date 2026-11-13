@@ -425,7 +425,7 @@ export struct TradeView {
   fillAll(): void {
     const t = AppContext.getTrading();
     if (this.tradeSide === 0) {
-      this.fillQty(t.maxBuyable(this.currentPrice));
+      this.fillQty(t.maxBuyable(this.currentPrice, this.leverage));
     } else {
       this.fillQty(t.sellableShares);
     }
@@ -1089,17 +1089,18 @@ export struct TradeView {
             .width('100%')
             .margin({ top: 10 })
 
-            // 杠杆档位（仅买入时显示）
+            // 杠杆档位（仅买入时显示，最高 50 倍）
             if (this.tradeSide === 0) {
-              Row({ space: 8 }) {
+              Row({ space: 6 }) {
                 Text('杠杆')
                   .fontSize(11)
                   .fontColor(AppConfig.COLOR_SUB)
                   .width(28)
                 Button('1x')
                   .layoutWeight(1)
-                  .height(32)
-                  .fontSize(12)
+                  .height(30)
+                  .fontSize(11)
+                  .padding(0)
                   .backgroundColor(this.leverage === 1 ? AppConfig.COLOR_ACCENT : '#262B35')
                   .fontColor(this.leverage === 1 ? '#12141A' : '#B8BDC7')
                   .onClick(() => {
@@ -1107,30 +1108,53 @@ export struct TradeView {
                   })
                 Button('2x')
                   .layoutWeight(1)
-                  .height(32)
-                  .fontSize(12)
+                  .height(30)
+                  .fontSize(11)
+                  .padding(0)
                   .backgroundColor(this.leverage === 2 ? AppConfig.COLOR_ACCENT : '#262B35')
                   .fontColor(this.leverage === 2 ? '#12141A' : '#B8BDC7')
                   .onClick(() => {
                     this.setLeverage(2);
                   })
-                Button('3x')
-                  .layoutWeight(1)
-                  .height(32)
-                  .fontSize(12)
-                  .backgroundColor(this.leverage === 3 ? AppConfig.COLOR_ACCENT : '#262B35')
-                  .fontColor(this.leverage === 3 ? '#12141A' : '#B8BDC7')
-                  .onClick(() => {
-                    this.setLeverage(3);
-                  })
                 Button('5x')
                   .layoutWeight(1)
-                  .height(32)
-                  .fontSize(12)
+                  .height(30)
+                  .fontSize(11)
+                  .padding(0)
                   .backgroundColor(this.leverage === 5 ? AppConfig.COLOR_ACCENT : '#262B35')
                   .fontColor(this.leverage === 5 ? '#12141A' : '#B8BDC7')
                   .onClick(() => {
                     this.setLeverage(5);
+                  })
+                Button('10x')
+                  .layoutWeight(1)
+                  .height(30)
+                  .fontSize(11)
+                  .padding(0)
+                  .backgroundColor(this.leverage === 10 ? AppConfig.COLOR_ACCENT : '#262B35')
+                  .fontColor(this.leverage === 10 ? '#12141A' : '#B8BDC7')
+                  .onClick(() => {
+                    this.setLeverage(10);
+                  })
+                Button('20x')
+                  .layoutWeight(1)
+                  .height(30)
+                  .fontSize(11)
+                  .padding(0)
+                  .backgroundColor(this.leverage === 20 ? AppConfig.COLOR_ACCENT : '#262B35')
+                  .fontColor(this.leverage === 20 ? '#12141A' : '#B8BDC7')
+                  .onClick(() => {
+                    this.setLeverage(20);
+                  })
+                Button('50x')
+                  .layoutWeight(1)
+                  .height(30)
+                  .fontSize(11)
+                  .padding(0)
+                  .backgroundColor(this.leverage === 50 ? AppConfig.COLOR_ACCENT : '#262B35')
+                  .fontColor(this.leverage === 50 ? '#12141A' : '#B8BDC7')
+                  .onClick(() => {
+                    this.setLeverage(50);
                   })
               }
               .width('100%')

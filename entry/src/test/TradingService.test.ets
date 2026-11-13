@@ -148,6 +148,37 @@ export default function tradingServiceTest() {
       expect(t.debt).assertEqual(80000);
     });
 
+    it('50 倍杠杆按保证金买入', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0, 0, 0, false));
+      // 50x 买 1000 股 @100：市值 10 万，保证金 2000，融资 9.8 万
+      const r = t.buy(100, 1000, 0, 50);
+      expect(r.ok).assertTrue();
+      expect(t.cash).assertEqual(AppConfig.INIT_CASH - 2000);
+      expect(t.debt).assertEqual(98000);
+    });
+
+    it('杠杆配资不占用普通借款额度', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0, 0, 0, false));
+      const r = t.buy(100, 10000, 0, 50); // 融资 98 万
+      expect(r.ok).assertTrue();
+      expect(t.loanAvailable).assertEqual(AppConfig.MAX_LOAN);
+      const r2 = t.borrow(AppConfig.MAX_LOAN);
+      expect(r2.ok).assertTrue();
+    });
+
+    it('50 倍全仓后超出总债务上限应拒绝', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0, 0, 0, false));
+      // 50x 全仓：现金 100 万 → 市值 5000 万，融资 4900 万
+      const r = t.buy(100, 500000, 0, 50);
+      expect(r.ok).assertTrue();
+      expect(t.debt).assertEqual(49000000);
+      const r2 = t.buy(100, 10000, 0, 50);
+      expect(r2.ok).assertFalse();
+    });
+
     it('杠杆保证金不足应拒绝', 0, () => {
       const t = new TradingService();
       t.setRules(makeRules(0, 0, 0, false));
