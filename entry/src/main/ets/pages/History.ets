@@ -14,7 +14,7 @@ interface ScenarioItem {
 }
 
 /**
- * 历史剧本列表页：
+ * 历史剧本列表页（明亮主题）：
  * 列出内置的历史市场，点击进入实时盯盘
  */
 @Entry
@@ -82,7 +82,7 @@ struct History {
       Row() {
         Text('‹')
           .fontSize(26)
-          .fontColor(AppConfig.COLOR_SUB)
+          .fontColor('#5A606B')
           .width(26)
           .textAlign(TextAlign.Center)
           .onClick(() => {
@@ -91,7 +91,7 @@ struct History {
         Text('历史剧本')
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
-          .fontColor(AppConfig.COLOR_TEXT)
+          .fontColor(AppConfig.LIGHT_TEXT)
           .margin({ left: 4 })
       }
       .width('100%')
@@ -99,14 +99,14 @@ struct History {
 
       Text('真实发生过的市场，重来一遍，看看当年的人经历了什么')
         .fontSize(11)
-        .fontColor(AppConfig.COLOR_SUB)
+        .fontColor(AppConfig.LIGHT_SUB)
         .width('100%')
         .padding({ left: 20, right: 20, top: 8 })
 
       if (this.loading) {
         Text('剧本加载中…')
           .fontSize(12)
-          .fontColor(AppConfig.COLOR_SUB)
+          .fontColor(AppConfig.LIGHT_SUB)
           .margin({ top: 24, left: 20 })
           .width('100%')
       }
@@ -119,29 +119,30 @@ struct History {
                 Text(item.name)
                   .fontSize(17)
                   .fontWeight(FontWeight.Bold)
-                  .fontColor(AppConfig.COLOR_TEXT)
+                  .fontColor(AppConfig.LIGHT_TEXT)
                 Blank()
                 Text(`${item.eventCount} 个历史事件`)
                   .fontSize(10)
-                  .fontColor(AppConfig.COLOR_ACCENT)
+                  .fontColor(AppConfig.LIGHT_ACCENT)
               }
               .width('100%')
 
               Text(`${item.era} · ${item.benchmark}`)
                 .fontSize(11)
-                .fontColor(AppConfig.COLOR_SUB)
+                .fontColor(AppConfig.LIGHT_SUB)
                 .margin({ top: 6 })
 
               Text(item.ruleText)
                 .fontSize(10)
-                .fontColor('#6B717C')
+                .fontColor('#9AA0AA')
                 .margin({ top: 4 })
             }
             .width('100%')
             .alignItems(HorizontalAlign.Start)
             .padding(16)
-            .backgroundColor(AppConfig.COLOR_CARD)
+            .backgroundColor(AppConfig.LIGHT_CARD)
             .borderRadius(14)
+            .shadow({ radius: 12, color: 'rgba(16,24,40,0.05)', offsetX: 0, offsetY: 3 })
             .onClick(() => {
               this.enter(item.id);
             })
@@ -156,6 +157,6 @@ struct History {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(AppConfig.COLOR_BG)
+    .backgroundColor(AppConfig.LIGHT_BG)
   }
 }

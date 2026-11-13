@@ -24,4 +24,22 @@ export class AppConfig {
   static readonly COLOR_SUB: string = '#8A8F99';
   /** 强调色（金） */
   static readonly COLOR_ACCENT: string = '#D4A34B';
+
+  /** ===== 明亮主题（主界面 / 列表页） ===== */
+  /** 页面背景 */
+  static readonly LIGHT_BG: string = '#F6F7F9';
+  /** 卡片背景 */
+  static readonly LIGHT_CARD: string = '#FFFFFF';
+  /** 主文字 */
+  static readonly LIGHT_TEXT: string = '#16181D';
+  /** 次要文字 */
+  static readonly LIGHT_SUB: string = '#7A808B';
+  /** 分割线 / 卡片描边 */
+  static readonly LIGHT_LINE: string = '#E9EBF0';
+  /** 强调色（深一档的金，浅底上更清晰） */
+  static readonly LIGHT_ACCENT: string = '#B7791F';
+  /** 强调卡片背景 */
+  static readonly LIGHT_GOLD_BG: string = '#FDF8EC';
+  /** 强调卡片描边 */
+  static readonly LIGHT_GOLD_LINE: string = '#F0E3C4';
 }
