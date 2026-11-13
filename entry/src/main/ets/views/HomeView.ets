@@ -78,7 +78,7 @@ export struct HomeView {
       }
       .width('100%')
       .alignItems(HorizontalAlign.Start)
-      .margin({ top: 64 })
+      .margin({ top: 40 })
 
       // 继续上一局（存在未完成存档时显示）
       if (this.hasResume) {
@@ -171,68 +171,62 @@ export struct HomeView {
         this.goRandom();
       })
 
-      // 入口 3 / 4：成就 + 汇率走势
-      Row({ space: 12 }) {
-        Row() {
-          Text('★')
-            .fontSize(14)
-            .fontColor(AppConfig.LIGHT_ACCENT)
-          Column() {
-            Text('成就')
-              .fontSize(12)
-              .fontColor(AppConfig.LIGHT_TEXT)
-            Text(this.achText)
-              .fontSize(9)
-              .fontColor(AppConfig.LIGHT_SUB)
-              .margin({ top: 2 })
-          }
-          .alignItems(HorizontalAlign.Start)
-          .margin({ left: 6 })
-          Blank()
-          Text('›')
-            .fontSize(16)
-            .fontColor('#C4C8D0')
+      // 入口 3：汇率走势（与上面两张主卡同规格）
+      Row() {
+        Column() {
+          Text('汇率走势')
+            .fontSize(19)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(AppConfig.LIGHT_TEXT)
+          Text('欧洲央行真实汇率，30 天到一年自选')
+            .fontSize(11)
+            .fontColor(AppConfig.LIGHT_SUB)
+            .margin({ top: 6 })
         }
+        .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
-        .height(56)
-        .padding({ left: 12, right: 10 })
-        .backgroundColor(AppConfig.LIGHT_CARD)
-        .borderRadius(14)
-        .onClick(() => {
-          this.onGoAchievement();
-        })
 
-        Row() {
-          Text('¥')
-            .fontSize(13)
-            .fontColor(AppConfig.LIGHT_ACCENT)
-          Column() {
-            Text('汇率走势')
-              .fontSize(12)
-              .fontColor(AppConfig.LIGHT_TEXT)
-            Text('真实数据')
-              .fontSize(9)
-              .fontColor(AppConfig.LIGHT_SUB)
-              .margin({ top: 2 })
-          }
-          .alignItems(HorizontalAlign.Start)
-          .margin({ left: 6 })
-          Blank()
-          Text('›')
-            .fontSize(16)
-            .fontColor('#C4C8D0')
-        }
-        .layoutWeight(1)
-        .height(56)
-        .padding({ left: 12, right: 10 })
-        .backgroundColor(AppConfig.LIGHT_CARD)
-        .borderRadius(14)
-        .onClick(() => {
-          this.onGoRate();
-        })
+        Text('›')
+          .fontSize(24)
+          .fontColor('#C4C8D0')
       }
       .width('100%')
+      .padding(20)
       .margin({ top: 14 })
+      .backgroundColor(AppConfig.LIGHT_CARD)
+      .borderRadius(16)
+      .shadow({ radius: 16, color: 'rgba(16,24,40,0.06)', offsetX: 0, offsetY: 4 })
+      .onClick(() => {
+        this.onGoRate();
+      })
+
+      // 入口 4：成就（细条）
+      Row() {
+        Text('★')
+          .fontSize(15)
+          .fontColor(AppConfig.LIGHT_ACCENT)
+        Text('成就')
+          .fontSize(13)
+          .fontColor(AppConfig.LIGHT_TEXT)
+          .margin({ left: 8 })
+        Blank()
+        Text(this.achText)
+          .fontSize(11)
+          .fontColor(AppConfig.LIGHT_SUB)
+        Text('›')
+          .fontSize(18)
+          .fontColor('#C4C8D0')
+          .margin({ left: 6 })
+      }
+      .width('100%')
+      .height(52)
+      .padding({ left: 16, right: 14 })
+      .margin({ top: 14 })
+      .backgroundColor(AppConfig.LIGHT_CARD)
+      .borderRadius(14)
+      .onClick(() => {
+        this.onGoAchievement();
+      })
 
       Row({ space: 18 }) {
         Text('新手教程 ›')
