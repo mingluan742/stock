@@ -59,11 +59,11 @@ export struct TradeView {
 
   // 下单面板（常驻，不再用弹层）
   @State marginText: string = '100000';
-  @State qtyText: string = '--';
+  @State notionalText: string = '0';
   @State feePreviewText: string = '0';
   @State riskText: string = '--';
-  @State buyBtnText: string = '买入';
-  @State sellBtnText: string = '卖出';
+  @State buyBtnText: string = '做多';
+  @State sellBtnText: string = '做空';
   @State tradeTip: string = '';
   /** 杠杆倍数 */
   @State leverage: number = 1;
@@ -404,7 +404,13 @@ export struct TradeView {
   syncAccount(): void {
     const t = AppContext.getTrading();
     this.cashText = this.formatMoney(t.cash);
-    this.sharesText = `${t.shares} 股`;
+    if (t.shares > 0) {
+      this.sharesText = `多 ${t.shares} 股`;
+    } else if (t.shares < 0) {
+      this.sharesText = `空 ${-t.shares} 股`;
+    } else {
+      this.sharesText = '0 股';
+    }
     if (t.shares !== 0) {
       this.avgCostText = t.shares > 0 ? `成本 ${t.avgCost.toFixed(2)}` : `卖空均价 ${t.avgCost.toFixed(2)}`;
       const pnl: number = t.pnl(this.currentPrice);
@@ -498,30 +504,68 @@ export struct TradeView {
     return qty > 0 ? qty : 0;
   }
 
-  /** 卖出数量：有持仓就全平，无持仓且允许做空则按面板数量开空 */
-  previewSellQty(): number {
+  /** 买入方向的数量：空头时只平空，不反手 */
+  previewBuyQty(): number {
     const t = AppContext.getTrading();
-    if (t.shares > 0) {
-      return t.sellableShares;
+    const qty: number = this.previewQty();
+    if (t.shares < 0) {
+      const cover: number = -t.shares;
+      return qty > cover ? cover : qty;
     }
-    const rules = AppContext.getMarket().rules;
-    if (t.shares === 0 && rules !== null && rules.shortSell) {
-      return this.previewQty();
-    }
-    return 0;
+    return qty;
   }
 
-  /** 刷新参数反馈（数量 / 手续费 / 可承受反向波动） */
+  /** 卖出方向的数量：多头时只平多（受 T+1 限制），空头时加空，无持仓时开空 */
+  previewSellQty(): number {
+    const t = AppContext.getTrading();
+    const qty: number = this.previewQty();
+    if (t.shares > 0) {
+      const sellable: number = t.sellableShares;
+      return qty > sellable ? sellable : qty;
+    }
+    const rules = AppContext.getMarket().rules;
+    if (t.shares === 0 && rules !== null && !rules.shortSell) {
+      return 0;
+    }
+    return qty;
+  }
+
+  /** 当前市场是否允许做空 */
+  canShort(): boolean {
+    const rules = AppContext.getMarket().rules;
+    return rules !== null && rules.shortSell;
+  }
+
+  /** 刷新参数反馈（名义仓位 / 手续费 / 可承受反向波动）与按钮文案 */
   updatePreview(): void {
+    const t = AppContext.getTrading();
     const margin: number = this.parseMargin();
     const qty: number = this.previewQty();
     const notional: number = qty * this.currentPrice;
     const fee: number = notional * this.currentFeeRate();
-    this.qtyText = qty > 0 ? `${qty} 股` : '--';
+    this.notionalText = this.formatMoney(notional);
     this.feePreviewText = this.formatMoney(fee);
-    this.buyBtnText = qty > 0 ? `买入 ${qty} 股` : '买入';
+
+    const buyQty: number = this.previewBuyQty();
     const sellQty: number = this.previewSellQty();
-    this.sellBtnText = sellQty > 0 ? `卖出 ${sellQty} 股` : '卖出';
+    if (t.shares > 0) {
+      this.buyBtnText = buyQty > 0 ? `加多 ${buyQty} 股` : '加多';
+      this.sellBtnText = sellQty > 0 ? `平多 ${sellQty} 股` : '平多';
+    } else if (t.shares < 0) {
+      this.buyBtnText = buyQty > 0 ? `平空 ${buyQty} 股` : '平空';
+      if (!this.canShort()) {
+        this.sellBtnText = '做空不可用';
+      } else {
+        this.sellBtnText = sellQty > 0 ? `加空 ${sellQty} 股` : '加空';
+      }
+    } else {
+      this.buyBtnText = buyQty > 0 ? `做多 ${buyQty} 股` : '做多';
+      if (!this.canShort()) {
+        this.sellBtnText = '做空不可用';
+      } else {
+        this.sellBtnText = sellQty > 0 ? `做空 ${sellQty} 股` : '做空';
+      }
+    }
 
     if (margin > 0 && this.leverage > 1) {
       // 自有资金能承受的反向波动：保证金 / 名义仓位（再扣掉手续费）
@@ -534,18 +578,19 @@ export struct TradeView {
     }
   }
 
-  /** 买入：按保证金与杠杆折算股数 */
+  /** 买入：空头时先平空，多头时加仓 */
   confirmBuy(): void {
-    const qty: number = this.previewQty();
+    const qty: number = this.previewBuyQty();
     if (qty <= 0) {
       this.tradeTip = '请填写保证金，并确认行情已就绪';
       return;
     }
     const t = AppContext.getTrading();
+    const before: number = t.shares;
     const r: Result<Account> = t.buy(this.currentPrice, qty, this.lastRatio, this.leverage);
     if (r.ok) {
       this.tradeTip = '';
-      this.showTip(`买入 ${qty} 股成交`);
+      this.showTip(before < 0 ? `平空 ${qty} 股成交` : `买入 ${qty} 股成交`);
       this.syncAccount();
       this.saveSnapshot();
       this.checkAchievements();
@@ -554,22 +599,50 @@ export struct TradeView {
     }
   }
 
-  /** 卖出：有持仓全平，无持仓按面板数量开空 */
+  /** 卖出：多头时平多（受 T+1），空头时加空，无持仓时开空 */
   confirmSell(): void {
     const t = AppContext.getTrading();
     const qty: number = this.previewSellQty();
     if (qty <= 0) {
       if (t.shares > 0) {
-        this.tradeTip = 'T+1：今日买入的仓位暂不可卖出';
+        this.tradeTip = '可卖持仓为 0（T+1 或已全部卖出）';
+      } else if (!this.canShort()) {
+        this.tradeTip = '本市场不支持做空';
       } else {
-        this.tradeTip = '没有可卖出的持仓';
+        this.tradeTip = '请填写保证金，并确认行情已就绪';
       }
       return;
     }
+    if (t.shares <= 0 && !this.canShort()) {
+      this.tradeTip = '本市场不支持做空';
+      return;
+    }
+    const before: number = t.shares;
     const r: Result<Account> = t.sell(this.currentPrice, qty, this.lastRatio);
     if (r.ok) {
       this.tradeTip = '';
-      this.showTip(`卖出 ${qty} 股成交`);
+      this.showTip(before <= 0 ? `做空 ${qty} 股成交` : `卖出 ${qty} 股成交`);
+      this.syncAccount();
+      this.saveSnapshot();
+      this.checkAchievements();
+    } else {
+      this.tradeTip = r.message;
+    }
+  }
+
+  /** 一键平仓：多头全卖，空头全买回 */
+  closeAll(): void {
+    const t = AppContext.getTrading();
+    if (t.shares === 0) {
+      this.tradeTip = '当前没有持仓';
+      return;
+    }
+    const r: Result<Account> = t.shares > 0
+      ? t.sell(this.currentPrice, t.sellableShares, this.lastRatio)
+      : t.buy(this.currentPrice, -t.shares, this.lastRatio, 1);
+    if (r.ok) {
+      this.tradeTip = '';
+      this.showTip('已一键平仓');
       this.syncAccount();
       this.saveSnapshot();
       this.checkAchievements();
@@ -1178,10 +1251,10 @@ export struct TradeView {
           // 参数反馈
           Row() {
             Column() {
-              Text('本次数量')
+              Text('名义仓位')
                 .fontSize(10)
                 .fontColor(AppConfig.COLOR_SUB)
-              Text(this.qtyText)
+              Text(this.notionalText)
                 .fontSize(13)
                 .fontColor(AppConfig.COLOR_TEXT)
                 .margin({ top: 3 })
@@ -1222,6 +1295,19 @@ export struct TradeView {
               .fontColor('#E64545')
               .margin({ top: 6 })
           }
+
+          Row() {
+            Blank()
+            Text('一键平仓')
+              .fontSize(10)
+              .fontColor(AppConfig.COLOR_ACCENT)
+              .padding({ top: 6, bottom: 2, left: 8 })
+              .onClick(() => {
+                this.closeAll();
+              })
+          }
+          .width('100%')
+          .margin({ top: 6 })
 
           Row({ space: 10 }) {
             Button(this.buyBtnText)

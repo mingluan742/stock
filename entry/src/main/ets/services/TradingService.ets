@@ -21,8 +21,6 @@ export interface AccountSnapshot {
   maxDrawdown?: number;
 }
 
-/** 做空上限（股），避免无限做空破坏体验 */
-const MAX_SHORT: number = 500;
 /** 涨跌停判定容差：达到限制的 95% 视为封板 */
 const LIMIT_TOLERANCE: number = 0.95;
 
@@ -216,8 +214,6 @@ export class TradingService {
         }
         return Result.fail<Account>('持仓不足');
       }
-    } else if (this.account.shares - qty < -MAX_SHORT) {
-      return Result.fail<Account>(`做空上限 ${MAX_SHORT} 股`);
     }
 
     const amount: number = price * qty;
@@ -225,6 +221,13 @@ export class TradingService {
     // 多头部分按均价结转成本，超出部分转为空头按卖出价记成本
     const closeQty: number = Math.min(qty, Math.max(0, this.account.shares));
     const openQty: number = qty - closeQty;
+    // 新开空头的敏口上限：做空市值 ≤ 净资产 × 最大杠杆
+    if (openQty > 0) {
+      const cap: number = this.netAsset(price) * AppConfig.MAX_LEVERAGE;
+      if (openQty * price > cap) {
+        return Result.fail<Account>(`做空规模超出净资产 ${AppConfig.MAX_LEVERAGE} 倍上限`);
+      }
+    }
     const longAvg: number = this.avgCost;
     if (closeQty > 0) {
       this.account.cost -= longAvg * closeQty;

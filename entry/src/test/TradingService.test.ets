@@ -102,12 +102,16 @@ export default function tradingServiceTest() {
       expect(t.cash - AppConfig.INIT_CASH).assertEqual(2000);
     });
 
-    it('做空超过上限应拒绝', 0, () => {
+    it('做空规模超出净资产 50 倍应拒绝', 0, () => {
       const t = new TradingService();
       t.setRules(makeRules(0, 0, 0, true));
-      const r = t.sell(100, 600, 0); // 上限 500 股
+      // 净资产 100 万，敏口上限 = 5000 万市值；@100 元最多 50 万股
+      const r = t.sell(100, 600000, 0);
       expect(r.ok).assertFalse();
-      expect(r.message).assertContain('做空上限');
+      expect(r.message).assertContain('做空规模');
+      const r2 = t.sell(100, 500000, 0);
+      expect(r2.ok).assertTrue();
+      expect(t.shares).assertEqual(-500000);
     });
 
     it('借款应增加现金与负债，还款应冲减', 0, () => {
