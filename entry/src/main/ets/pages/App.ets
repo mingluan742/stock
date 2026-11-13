@@ -4,6 +4,7 @@ import { TutorialService } from '../services/TutorialService';
 import { AchievementView } from '../views/AchievementView';
 import { HistoryView } from '../views/HistoryView';
 import { HomeView } from '../views/HomeView';
+import { RateView } from '../views/RateView';
 import { ResultView } from '../views/ResultView';
 import { SettingsView } from '../views/SettingsView';
 import { TradeView } from '../views/TradeView';
@@ -75,6 +76,9 @@ struct App {
           onGoSettings: () => {
             this.settingsFrom = 'home';
             this.view = 'settings';
+          },
+          onGoRate: () => {
+            this.view = 'rate';
           }
         })
       } else if (this.view === 'history') {
@@ -116,6 +120,12 @@ struct App {
         SettingsView({
           onBack: () => {
             this.view = this.settingsFrom;
+          }
+        })
+      } else if (this.view === 'rate') {
+        RateView({
+          onBack: () => {
+            this.view = 'home';
           }
         })
       } else if (this.view === 'trade') {

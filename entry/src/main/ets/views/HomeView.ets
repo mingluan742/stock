@@ -21,6 +21,8 @@ export struct HomeView {
   onGoTutorial: () => void = () => {};
   /** 模型设置 */
   onGoSettings: () => void = () => {};
+  /** 汇率走势 */
+  onGoRate: () => void = () => {};
 
   @State hasResume: boolean = false;
   @State resumeTitle: string = '';
@@ -169,33 +171,68 @@ export struct HomeView {
         this.goRandom();
       })
 
-      // 入口 3：成就
-      Row() {
-        Text('★')
-          .fontSize(15)
-          .fontColor(AppConfig.LIGHT_ACCENT)
-        Text('成就')
-          .fontSize(13)
-          .fontColor(AppConfig.LIGHT_TEXT)
-          .margin({ left: 8 })
-        Blank()
-        Text(this.achText)
-          .fontSize(11)
-          .fontColor(AppConfig.LIGHT_SUB)
-        Text('›')
-          .fontSize(18)
-          .fontColor('#C4C8D0')
+      // 入口 3 / 4：成就 + 汇率走势
+      Row({ space: 12 }) {
+        Row() {
+          Text('★')
+            .fontSize(14)
+            .fontColor(AppConfig.LIGHT_ACCENT)
+          Column() {
+            Text('成就')
+              .fontSize(12)
+              .fontColor(AppConfig.LIGHT_TEXT)
+            Text(this.achText)
+              .fontSize(9)
+              .fontColor(AppConfig.LIGHT_SUB)
+              .margin({ top: 2 })
+          }
+          .alignItems(HorizontalAlign.Start)
           .margin({ left: 6 })
+          Blank()
+          Text('›')
+            .fontSize(16)
+            .fontColor('#C4C8D0')
+        }
+        .layoutWeight(1)
+        .height(56)
+        .padding({ left: 12, right: 10 })
+        .backgroundColor(AppConfig.LIGHT_CARD)
+        .borderRadius(14)
+        .onClick(() => {
+          this.onGoAchievement();
+        })
+
+        Row() {
+          Text('¥')
+            .fontSize(13)
+            .fontColor(AppConfig.LIGHT_ACCENT)
+          Column() {
+            Text('汇率走势')
+              .fontSize(12)
+              .fontColor(AppConfig.LIGHT_TEXT)
+            Text('真实数据')
+              .fontSize(9)
+              .fontColor(AppConfig.LIGHT_SUB)
+              .margin({ top: 2 })
+          }
+          .alignItems(HorizontalAlign.Start)
+          .margin({ left: 6 })
+          Blank()
+          Text('›')
+            .fontSize(16)
+            .fontColor('#C4C8D0')
+        }
+        .layoutWeight(1)
+        .height(56)
+        .padding({ left: 12, right: 10 })
+        .backgroundColor(AppConfig.LIGHT_CARD)
+        .borderRadius(14)
+        .onClick(() => {
+          this.onGoRate();
+        })
       }
       .width('100%')
-      .height(52)
-      .padding({ left: 16, right: 14 })
       .margin({ top: 14 })
-      .backgroundColor(AppConfig.LIGHT_CARD)
-      .borderRadius(14)
-      .onClick(() => {
-        this.onGoAchievement();
-      })
 
       Row({ space: 18 }) {
         Text('新手教程 ›')

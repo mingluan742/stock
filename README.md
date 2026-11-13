@@ -3,10 +3,10 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: '4d78a4e0-6e60-44f4-80d6-4fa23e5ab46f'
-  PropagateID: '4d78a4e0-6e60-44f4-80d6-4fa23e5ab46f'
-  ReservedCode1: '3c45168b-3533-4a87-8b0c-2c448d29f9cd'
-  ReservedCode2: '3c45168b-3533-4a87-8b0c-2c448d29f9cd'
+  ProduceID: 'ff489ab0-0af9-4e4c-968f-9b30408271d3'
+  PropagateID: 'ff489ab0-0af9-4e4c-968f-9b30408271d3'
+  ReservedCode1: '13daa097-ed00-4cb8-ba42-265f24cd9945'
+  ReservedCode2: '13daa097-ed00-4cb8-ba42-265f24cd9945'
 ---
 
 # 涨跌实验室（StockLab）
@@ -40,6 +40,7 @@ AIGC:
 | 成就系统 | 15 个成就（首次出手 / 逆向思维 / 五十倍狂热 / 归零体验 / 空仓到底 等），实时判定、本机持久化，主界面可查看收集进度；未解锁的成就只显示名字，条件在达成后揭晓 |
 | 新手引导 | 首次打开先问「新手 / 老手」：新手进 4 步图文教程，老手直接开始；主界面可随时重看 |
 | AI 复盘点评 | 接入兼容 OpenAI 协议的大模型接口，把收益/回撤/胜率/流水交给模型生成个性化点评；未配置 Key 或请求失败时自动退回本地文案 |
+| 汇率走势 | 真实数据页：欧洲央行每日参考汇率，美元/欧元/日元/英镑/港币/澳元对人民币；区间 30 天 ~ 一年快捷选择，也可自选起止日；给出期末值、涨跌幅、最高最低与年化波动率 |
 
 ## 技术架构
 
@@ -48,7 +49,7 @@ AIGC:
 ```
 L1 表现层   views/（HomeView / HistoryView / TradeView / ResultView / AchievementView / TutorialView）+ pages/App.ets（状态机入口）
 L2 调度层   视图内状态与交互编排（@State / @Prop）
-L3 业务层   services/（MarketService 行情、TradingService 交易、RandomScenarioService 随机生成、AchievementService 成就、AiService 大模型）
+L3 业务层   services/（MarketService 行情、TradingService 交易、RandomScenarioService 随机生成、AchievementService 成就、AiService 大模型、RateService 汇率）
 L4 数据层   repository/（IMarketDataSource 接口 + BuiltinScenarioSource 实现）
 L5 存储层   core/SaveService（AppStorage + PersistentStorage JSON 快照）
 横切 A     core/（Result 统一返回、EventBus 事件总线、AppContext 服务定位）
@@ -59,8 +60,8 @@ L5 存储层   core/SaveService（AppStorage + PersistentStorage JSON 快照）
 
 ```
 entry/src/main/ets/
-├─ pages/App.ets            唯一入口页，状态机切换八个视图
-├─ views/                   八个视图（引导询问 / 教程 / 主界面 / 剧本列表 / 盯盘 / 复盘 / 成就 / 设置）
+├─ pages/App.ets            唯一入口页，状态机切换九个视图
+├─ views/                   九个视图（引导询问 / 教程 / 主界面 / 剧本列表 / 盯盘 / 复盘 / 成就 / 设置 / 汇率）
 ├─ services/                行情、交易、随机生成、成就、大模型
 ├─ repository/              数据源接口与内置实现
 │  └─ data/                 ArkTS 内置剧本数据（rawfile 不可用时的回退）
@@ -74,7 +75,7 @@ entry/src/main/ets/
 
 - **接口驱动数据源**：`IMarketDataSource` 定义"剧本目录 + 加载剧本"，`BuiltinScenarioSource` 优先读 rawfile，失败自动回退 ArkTS 内置数据（兼容预览器）；
 - **规则参数化**：每个剧本自带 `rules`（涨跌停、T+1、费率、能否做空），同一套交易代码跑出不同市场；
-- **状态机代替路由**：八视图用 `@State view` 切换，避免预览器不支持 router 的问题；
+- **状态机代替路由**：九视图用 `@State view` 切换，避免预览器不支持 router 的问题；
 - **确定性伪随机**：K线高低点用 `Math.sin` 按蜡烛序号派生，重绘不闪烁；
 - **单例装配**：`AppContext` 统一创建服务，换数据源只改一行。
 
@@ -137,6 +138,7 @@ Key 只保存在本机（PersistentStorage），代码中不内置任何密钥�
 | v1.7 | 接入大模型：AI 复盘点评 + 模型设置页（Key 仅存本机）+ 失败自动退回本地文案 |
 | v1.8 | 模型设置页支持免费服务商一键预设；本地 Ollama 免 Key |
 | v1.9 | 只保留零成本方案：默认智谱 GLM-4-Flash，预设仅留智谱与本地 Ollama |
+| v2.0 | 新增汇率走势页：欧洲央行真实汇率，6 个货币对，30 天~一年快捷区间与自选起止日 |
 
 ## 待办
 
