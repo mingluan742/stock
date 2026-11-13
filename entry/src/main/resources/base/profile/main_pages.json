@@ -1,7 +1,5 @@
 {
   "src": [
-    "pages/Home",
-    "pages/History",
-    "pages/Index"
+    "pages/App"
   ]
 }

@@ -1,4 +1,3 @@
-import { BusinessError } from '@kit.BasicServicesKit';
 import { AppConfig } from '../config/AppConfig';
 import { AppContext } from '../core/AppContext';
 
@@ -7,9 +6,12 @@ import { AppContext } from '../core/AppContext';
  * - 历史剧本 → 剧本列表页（History）
  * - 随机模拟 → 直接生成一局陌生行情
  */
-@Entry
 @Component
-struct Home {
+export struct HomeView {
+  /** 进入历史剧本列表 */
+  onGoHistory: () => void = () => {};
+  /** 进入随机模拟 */
+  onGoRandom: () => void = () => {};
 
   aboutToAppear(): void {
     const host = this.getUIContext().getHostContext();
@@ -19,20 +21,11 @@ struct Home {
   }
 
   goHistory(): void {
-    this.getUIContext().getRouter().pushUrl({
-      url: 'pages/History'
-    }).catch((err: BusinessError) => {
-      console.error(`[StockLab] 跳转失败: ${err.message}`);
-    });
+    this.onGoHistory();
   }
 
   goRandom(): void {
-    this.getUIContext().getRouter().pushUrl({
-      url: 'pages/Index',
-      params: { mode: 'random', id: '' }
-    }).catch((err: BusinessError) => {
-      console.error(`[StockLab] 跳转失败: ${err.message}`);
-    });
+    this.onGoRandom();
   }
 
   build() {

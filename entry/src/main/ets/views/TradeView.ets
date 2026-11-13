@@ -6,12 +6,6 @@ import { KLine } from '../models/KLine';
 import { ScenarioData } from '../models/Scenario';
 import { ScenarioEvent } from '../models/ScenarioEvent';
 
-/** 路由参数：mode = history（历史剧本）| random（随机模拟） */
-interface TradeRouteParams {
-  mode: string;
-  id: string;
-}
-
 /** 图表最多同时显示的样本数（超出后向左滚动） */
 const MAX_POINTS: number = 60;
 /** K线视口显示的蜡烛根数 */
@@ -25,9 +19,14 @@ const TICK_MS: number = 533;
  * - 买卖按钮常驻，随时可操作，账户现金/持仓/浮盈实时刷新
  * - 走到历史事件日自动暂停，弹出"历史现场"，关闭后继续
  */
-@Entry
 @Component
-struct Index {
+export struct TradeView {
+  /** 进入模式：history / random */
+  @Prop mode: string = 'history';
+  /** 历史剧本 id */
+  @Prop scenarioId: string = AppConfig.DEFAULT_SCENARIO;
+  /** 返回上一级（由 App 页注入） */
+  onBack: () => void = () => {};
   @State scenarioName: string = '加载中…';
   @State eraText: string = '';
   @State priceText: string = '--';
@@ -71,8 +70,6 @@ struct Index {
   private currentPrice: number = 0;
   private lastRatio: number = 0;
   private timerId: number = -1;
-  private mode: string = 'history';
-  private scenarioId: string = AppConfig.DEFAULT_SCENARIO;
   private settings: RenderingContextSettings = new RenderingContextSettings(true);
   private ctx: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
   private eventScroller: Scroller = new Scroller();
@@ -82,29 +79,10 @@ struct Index {
     if (host !== undefined) {
       AppContext.init(host.resourceManager);
     }
-    this.readRouteParams();
     if (this.mode === 'random') {
       this.loadRandom();
     } else {
       this.loadScenario(this.scenarioId);
-    }
-  }
-
-  /** 读取主界面传来的路由参数 */
-  readRouteParams(): void {
-    try {
-      const params = this.getUIContext().getRouter().getParams() as TradeRouteParams;
-      if (params !== undefined && params !== null) {
-        if (params.mode !== undefined && params.mode !== null) {
-          this.mode = params.mode;
-        }
-        if (params.id !== undefined && params.id !== null && params.id !== '') {
-          this.scenarioId = params.id;
-        }
-      }
-    } catch (err) {
-      const e = err as Error;
-      console.info(`[StockLab] 无路由参数，使用默认剧本: ${e.message}`);
     }
   }
 
@@ -653,7 +631,7 @@ struct Index {
             .textAlign(TextAlign.Center)
             .onClick(() => {
               this.stopPlay();
-              this.getUIContext().getRouter().back();
+              this.onBack();
             })
           Text(AppConfig.APP_NAME)
             .fontSize(18)

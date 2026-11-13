@@ -1,4 +1,3 @@
-import { BusinessError } from '@kit.BasicServicesKit';
 import { AppConfig } from '../config/AppConfig';
 import { AppContext } from '../core/AppContext';
 import { MarketRuleConfig, ScenarioMeta } from '../models/Scenario';
@@ -17,9 +16,12 @@ interface ScenarioItem {
  * 历史剧本列表页（明亮主题）：
  * 列出内置的历史市场，点击进入实时盯盘
  */
-@Entry
 @Component
-struct History {
+export struct HistoryView {
+  /** 返回主界面 */
+  onBack: () => void = () => {};
+  /** 选中剧本（参数为剧本 id） */
+  onSelect: (id: string) => void = () => {};
   @State items: ScenarioItem[] = [];
   @State loading: boolean = true;
 
@@ -68,12 +70,7 @@ struct History {
   }
 
   enter(id: string): void {
-    this.getUIContext().getRouter().pushUrl({
-      url: 'pages/Index',
-      params: { mode: 'history', id: id }
-    }).catch((err: BusinessError) => {
-      console.error(`[StockLab] 跳转失败: ${err.message}`);
-    });
+    this.onSelect(id);
   }
 
   build() {
@@ -86,7 +83,7 @@ struct History {
           .width(26)
           .textAlign(TextAlign.Center)
           .onClick(() => {
-            this.getUIContext().getRouter().back();
+            this.onBack();
           })
         Text('历史剧本')
           .fontSize(20)
