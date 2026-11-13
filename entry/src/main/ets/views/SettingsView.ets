@@ -1,6 +1,33 @@
 import { AppConfig } from '../config/AppConfig';
 import { AiService } from '../services/AiService';
 
+/** 预设服务商 */
+interface AiPreset {
+  name: string;
+  tag: string;
+  url: string;
+  model: string;
+}
+
+const PRESETS: AiPreset[] = [
+  {
+    name: '智谱 GLM-4-Flash', tag: '免费',
+    url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-4-flash'
+  },
+  {
+    name: '硅基流动', tag: '有免费模型',
+    url: 'https://api.siliconflow.cn/v1/chat/completions', model: 'Qwen/Qwen2.5-7B-Instruct'
+  },
+  {
+    name: '百度千帆', tag: '有免费额度',
+    url: 'https://qianfan.baidubce.com/v2/chat/completions', model: 'ernie-speed-8k'
+  },
+  {
+    name: '本地 Ollama', tag: '免 Key',
+    url: 'http://192.168.1.100:11434/v1/chat/completions', model: 'qwen2.5:3b'
+  }
+];
+
 /**
  * 模型设置（明亮主题）：
  * 填写兼容 OpenAI 协议的接口地址、模型名与 API Key
@@ -27,7 +54,25 @@ export struct SettingsView {
   save(): void {
     AiService.save(this.urlText, this.modelText, this.keyText);
     this.tipOk = true;
-    this.tip = this.keyText.trim() === '' ? '已保存，但未填 Key，AI 功能会使用本地文案' : '已保存，去结算页试试 AI 复盘';
+    if (AiService.isLocalUrl(this.urlText)) {
+      this.tip = '已保存。本地服务不需要 Key，请确认手机和电脑在同一 WiFi';
+    } else if (this.keyText.trim() === '') {
+      this.tip = '已保存，但未填 Key，AI 功能会使用本地文案';
+    } else {
+      this.tip = '已保存，去结算页试试 AI 复盘';
+    }
+  }
+
+  /** 一键填入免费服务商 */
+  applyPreset(p: AiPreset): void {
+    this.urlText = p.url;
+    this.modelText = p.model;
+    this.tipOk = true;
+    if (AiService.isLocalUrl(p.url)) {
+      this.tip = '地址里的 IP 换成你电脑的局域网 IP；本地服务不需要 Key';
+    } else {
+      this.tip = `已填入 ${p.name}，再去官网申请一个 Key 即可`;
+    }
   }
 
   clearKey(): void {
@@ -66,6 +111,32 @@ export struct SettingsView {
             .lineHeight(18)
             .width('100%')
             .margin({ top: 16 })
+
+          // 免费服务商快选
+          Column() {
+            Text('快速选择（都提供免费额度，Key 去官网申请）')
+              .fontSize(10)
+              .fontColor(AppConfig.LIGHT_SUB)
+            Flex({ wrap: FlexWrap.Wrap }) {
+              ForEach(PRESETS, (p: AiPreset) => {
+                Text(`${p.name} · ${p.tag}`)
+                  .fontSize(10)
+                  .fontColor(AppConfig.LIGHT_ACCENT)
+                  .backgroundColor(AppConfig.LIGHT_GOLD_BG)
+                  .border({ width: 1, color: AppConfig.LIGHT_GOLD_LINE })
+                  .borderRadius(9)
+                  .padding({ left: 10, right: 10, top: 7, bottom: 7 })
+                  .margin({ right: 8, top: 8 })
+                  .onClick(() => {
+                    this.applyPreset(p);
+                  })
+              }, (p: AiPreset) => p.name)
+            }
+            .width('100%')
+          }
+          .width('100%')
+          .alignItems(HorizontalAlign.Start)
+          .margin({ top: 14 })
 
           // 接口地址
           Column() {

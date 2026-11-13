@@ -104,7 +104,17 @@ export class AiService {
   }
 
   static get hasKey(): boolean {
-    return AiService.settings.key !== '';
+    const s: AiSettings = AiService.settings;
+    if (s.key !== '') {
+      return true;
+    }
+    // 本地 Ollama 之类的服务不需要 Key
+    return AiService.isLocalUrl(s.baseUrl);
+  }
+
+  /** 是否指向本机 / 局域网服务（这类服务不需要 API Key） */
+  static isLocalUrl(url: string): boolean {
+    return url.indexOf('localhost') >= 0 || url.indexOf('127.0.0.1') >= 0 || url.indexOf('192.168.') >= 0;
   }
 
   /** 组装复盘提示词 */
@@ -144,7 +154,8 @@ export class AiService {
   /** 通用对话调用 */
   static async chat(messages: ChatMessage[]): Promise<string> {
     const cfg: AiSettings = AiService.settings;
-    if (cfg.key === '') {
+    const local: boolean = AiService.isLocalUrl(cfg.baseUrl);
+    if (cfg.key === '' && !local) {
       throw new Error('未配置 API Key');
     }
     const body: ChatRequestBody = {
@@ -155,9 +166,11 @@ export class AiService {
       stream: false
     };
     const header: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${cfg.key}`
+      'Content-Type': 'application/json'
     };
+    if (cfg.key !== '') {
+      header['Authorization'] = `Bearer ${cfg.key}`;
+    }
     const req: http.HttpRequest = http.createHttp();
     try {
       const resp: http.HttpResponse = await req.request(cfg.baseUrl, {
