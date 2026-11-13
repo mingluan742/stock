@@ -3,10 +3,10 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: '4cfffee2-2a8e-4ad2-861d-473757f5a932'
-  PropagateID: '4cfffee2-2a8e-4ad2-861d-473757f5a932'
-  ReservedCode1: 'de3d937f-b7b0-4450-bd0d-1546ee6fda1e'
-  ReservedCode2: 'de3d937f-b7b0-4450-bd0d-1546ee6fda1e'
+  ProduceID: '13afb7ee-459a-4b28-89eb-ca777b07f75e'
+  PropagateID: '13afb7ee-459a-4b28-89eb-ca777b07f75e'
+  ReservedCode1: 'db20dcc7-cc03-4de2-abfa-80ff646008b8'
+  ReservedCode2: 'db20dcc7-cc03-4de2-abfa-80ff646008b8'
 ---
 
 # 涨跌实验室（StockLab）
@@ -35,15 +35,16 @@ AIGC:
 | 杠杆 | 1x / 2x / 5x / 10x / 20x / **50x**，按保证金交易，不足部分自动融资（配资独立于普通借款额度） |
 | 存档 | 自动保存当前对局（每 5 个交易日 + 每次交易），主界面可"继续上一局" |
 | 结算复盘 | 收益率、最大回撤、交易笔数、胜率、手续费；全程行情曲线标注买卖点；逐笔流水；与"买入持有"对照 |
+| 成就系统 | 15 个成就（首次出手 / 逆向思维 / 五十倍狂热 / 归零体验 / 空仓到底 等），实时判定、本机持久化，主界面可查看收集进度 |
 
 ## 技术架构
 
 单体应用分五层 + 两个横切关注点：
 
 ```
-L1 表现层   views/（HomeView / HistoryView / TradeView / ResultView）+ pages/App.ets（状态机入口）
+L1 表现层   views/（HomeView / HistoryView / TradeView / ResultView / AchievementView）+ pages/App.ets（状态机入口）
 L2 调度层   视图内状态与交互编排（@State / @Prop）
-L3 业务层   services/（MarketService 行情、TradingService 交易、RandomScenarioService 随机生成）
+L3 业务层   services/（MarketService 行情、TradingService 交易、RandomScenarioService 随机生成、AchievementService 成就）
 L4 数据层   repository/（IMarketDataSource 接口 + BuiltinScenarioSource 实现）
 L5 存储层   core/SaveService（AppStorage + PersistentStorage JSON 快照）
 横切 A     core/（Result 统一返回、EventBus 事件总线、AppContext 服务定位）
@@ -54,8 +55,8 @@ L5 存储层   core/SaveService（AppStorage + PersistentStorage JSON 快照）
 
 ```
 entry/src/main/ets/
-├─ pages/App.ets            唯一入口页，状态机切换四个视图
-├─ views/                   四个视图组件（主界面 / 剧本列表 / 盯盘 / 复盘）
+├─ pages/App.ets            唯一入口页，状态机切换五个视图
+├─ views/                   五个视图组件（主界面 / 剧本列表 / 盯盘 / 复盘 / 成就）
 ├─ services/                行情、交易、随机生成
 ├─ repository/              数据源接口与内置实现
 │  └─ data/                 ArkTS 内置剧本数据（rawfile 不可用时的回退）
@@ -69,7 +70,7 @@ entry/src/main/ets/
 
 - **接口驱动数据源**：`IMarketDataSource` 定义"剧本目录 + 加载剧本"，`BuiltinScenarioSource` 优先读 rawfile，失败自动回退 ArkTS 内置数据（兼容预览器）；
 - **规则参数化**：每个剧本自带 `rules`（涨跌停、T+1、费率、能否做空），同一套交易代码跑出不同市场；
-- **状态机代替路由**：四视图用 `@State view` 切换，避免预览器不支持 router 的问题；
+- **状态机代替路由**：五视图用 `@State view` 切换，避免预览器不支持 router 的问题；
 - **确定性伪随机**：K线高低点用 `Math.sin` 按蜡烛序号派生，重绘不闪烁；
 - **单例装配**：`AppContext` 统一创建服务，换数据源只改一行。
 
@@ -87,7 +88,7 @@ entry/src/main/ets/
 
 ## 单元测试
 
-`entry/src/test/TradingService.test.ets` 覆盖 22 个用例：手续费、现金校验、均价结转、T+1、涨跌停、做空、贷款计息、杠杆保证金、净资产与爆仓、交易流水与已实现盈亏、胜率、最大回撤、快照恢复、重置。
+`entry/src/test/TradingService.test.ets` 覆盖 23 个用例：手续费、现金校验、均价结转、T+1、涨跌停、做空、贷款计息、杠杆保证金、净资产与爆仓、交易流水与已实现盈亏、胜率、最大回撤、快照恢复、重置、成就用的统计字段。
 
 - DevEco 中右键 `entry/src/test` → Run Tests
 - 或命令行：`hvigorw --mode module -p module=entry@default -p product=default test`
@@ -106,6 +107,7 @@ entry/src/main/ets/
 | v0.9 | 杠杆交易 + 对局存档/继续 + 单元测试 + README |
 | v1.0 | 杠杆上限提升至 50 倍，配资独立记账，总债务上限 |
 | v1.1 | 交易流水与最大回撤 + 结算复盘页（买卖点标注）+ 新增 5 个历史剧本 |
+| v1.2 | 成就系统：15 个成就 + 实时判定 + 本机持久化 + 成就收集页 |
 
 ## 待办
 

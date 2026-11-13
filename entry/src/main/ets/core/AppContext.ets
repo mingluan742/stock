@@ -1,5 +1,6 @@
 import { resourceManager } from '@kit.LocalizationKit';
 import { BuiltinScenarioSource } from '../repository/BuiltinScenarioSource';
+import { AchievementService } from '../services/AchievementService';
 import { MarketService } from '../services/MarketService';
 import { RandomScenarioService } from '../services/RandomScenarioService';
 import { TradingService } from '../services/TradingService';
@@ -12,6 +13,7 @@ export class AppContext {
   private static marketService: MarketService | null = null;
   private static tradingService: TradingService | null = null;
   private static randomService: RandomScenarioService | null = null;
+  private static achievementService: AchievementService | null = null;
 
   /** 应用启动时调用一次；重复调用安全 */
   static init(rm: resourceManager.ResourceManager): void {
@@ -43,5 +45,12 @@ export class AppContext {
       AppContext.randomService = new RandomScenarioService();
     }
     return AppContext.randomService;
+  }
+
+  static getAchievements(): AchievementService {
+    if (AppContext.achievementService === null) {
+      AppContext.achievementService = new AchievementService();
+    }
+    return AppContext.achievementService;
   }
 }

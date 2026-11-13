@@ -1,5 +1,6 @@
 import { AppConfig } from '../config/AppConfig';
 import { SaveService, SaveSnapshot } from '../core/SaveService';
+import { AchievementView } from '../views/AchievementView';
 import { HistoryView } from '../views/HistoryView';
 import { HomeView } from '../views/HomeView';
 import { ResultView } from '../views/ResultView';
@@ -49,6 +50,9 @@ struct App {
           },
           onResume: () => {
             this.resumeGame();
+          },
+          onGoAchievement: () => {
+            this.view = 'achievement';
           }
         })
       } else if (this.view === 'history') {
@@ -61,6 +65,12 @@ struct App {
             this.tradeMode = 'history';
             this.tradeId = id;
             this.view = 'trade';
+          }
+        })
+      } else if (this.view === 'achievement') {
+        AchievementView({
+          onBack: () => {
+            this.view = 'home';
           }
         })
       } else if (this.view === 'trade') {

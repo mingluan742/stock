@@ -1,5 +1,6 @@
 import { AppConfig } from '../config/AppConfig';
 import { AppContext } from '../core/AppContext';
+import { AchievementItem } from '../models/Achievement';
 import { TradeRecord } from '../models/TradeRecord';
 
 /** 复盘页流水展示项（把数值格式化成文本，避免模板里做运算） */
@@ -46,6 +47,8 @@ export struct ResultView {
   @State benchText: string = '';
   @State verdictText: string = '';
   @State flows: FlowItem[] = [];
+  /** 本局新解锁的成就 */
+  @State newItems: AchievementItem[] = [];
 
   private prices: number[] = [];
   private dateIndex: Map<string, number> = new Map<string, number>();
@@ -109,6 +112,7 @@ export struct ResultView {
     }
 
     this.buildFlows();
+    this.newItems = AppContext.getAchievements().sessionUnlocked();
     this.drawEquity();
   }
 
@@ -361,6 +365,46 @@ export struct ResultView {
               .fontColor('#9AA0AA')
               .width('100%')
               .margin({ top: 10, left: 2 })
+          }
+
+          // 本局新解锁成就
+          if (this.newItems.length > 0) {
+            Column() {
+              Row() {
+                Text('本局解锁')
+                  .fontSize(11)
+                  .fontColor(AppConfig.COLOR_ACCENT)
+                Blank()
+                Text(`${this.newItems.length} 个成就`)
+                  .fontSize(10)
+                  .fontColor(AppConfig.COLOR_SUB)
+              }
+              .width('100%')
+
+              ForEach(this.newItems, (item: AchievementItem) => {
+                Row() {
+                  Text(item.icon)
+                    .fontSize(14)
+                    .fontColor(AppConfig.COLOR_ACCENT)
+                    .width(20)
+                  Text(item.name)
+                    .fontSize(12)
+                    .fontColor(AppConfig.COLOR_TEXT)
+                    .layoutWeight(1)
+                  Text(item.tier === 2 ? '传说' : (item.tier === 1 ? '稀有' : ''))
+                    .fontSize(9)
+                    .fontColor('#C9A227')
+                }
+                .width('100%')
+                .padding({ top: 6, bottom: 6 })
+              }, (item: AchievementItem) => item.id)
+            }
+            .width('100%')
+            .padding(14)
+            .margin({ top: 10 })
+            .backgroundColor(AppConfig.COLOR_CARD)
+            .borderRadius(12)
+            .alignItems(HorizontalAlign.Start)
           }
 
           Text(this.verdictText)

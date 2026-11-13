@@ -54,6 +54,10 @@ export class TradingService {
   private peakNetValue: number = 0;
   /** 最大回撤（0~1） */
   private maxDrawdownValue: number = 0;
+  /** 本局用过的最高杠杆倍数（成就判定用） */
+  private maxLeverageValue: number = 1;
+  /** 本局累计借款金额（成就判定用） */
+  private totalBorrowedValue: number = 0;
 
   /** 切换剧本规则并重置账户 */
   setRules(rules: MarketRuleConfig): void {
@@ -83,6 +87,7 @@ export class TradingService {
     }
     this.account.cash += amount;
     this.loanPrincipal += amount;
+    this.totalBorrowedValue += amount;
     return Result.success(this.account);
   }
 
@@ -137,6 +142,9 @@ export class TradingService {
     } else {
       // 杠杆：按倍数强制配资，自有资金只承担保证金（最高 50 倍）
       const lev: number = Math.min(leverage, AppConfig.MAX_LEVERAGE);
+      if (lev > this.maxLeverageValue) {
+        this.maxLeverageValue = lev;
+      }
       const margin: number = amount / lev;
       if (this.account.cash < margin + fee) {
         return Result.fail<Account>(`保证金不足，需 ${Math.round(margin + fee)}`);
@@ -307,6 +315,38 @@ export class TradingService {
     return this.records.length;
   }
 
+  /** 买入成交笔数 */
+  get buyCount(): number {
+    let n: number = 0;
+    for (const r of this.records) {
+      if (r.side === '买') {
+        n += 1;
+      }
+    }
+    return n;
+  }
+
+  /** 卖出成交笔数 */
+  get sellCount(): number {
+    let n: number = 0;
+    for (const r of this.records) {
+      if (r.side === '卖') {
+        n += 1;
+      }
+    }
+    return n;
+  }
+
+  /** 本局用过的最高杠杆倍数 */
+  get maxLeverageUsed(): number {
+    return this.maxLeverageValue;
+  }
+
+  /** 本局累计借款金额 */
+  get totalBorrowed(): number {
+    return this.totalBorrowedValue;
+  }
+
   /** 胜率：盈利的卖出笔数 / 总卖出笔数 */
   get winRate(): number {
     let sells: number = 0;
@@ -404,6 +444,8 @@ export class TradingService {
     this.records = [];
     this.peakNetValue = 0;
     this.maxDrawdownValue = 0;
+    this.maxLeverageValue = 1;
+    this.totalBorrowedValue = 0;
   }
 
   /** 导出账户快照（持久化用） */

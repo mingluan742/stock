@@ -15,10 +15,13 @@ export struct HomeView {
   onGoRandom: () => void = () => {};
   /** 继续未完成的存档 */
   onResume: () => void = () => {};
+  /** 进入成就页 */
+  onGoAchievement: () => void = () => {};
 
   @State hasResume: boolean = false;
   @State resumeTitle: string = '';
   @State resumeInfo: string = '';
+  @State achText: string = '';
 
   aboutToAppear(): void {
     const host = this.getUIContext().getHostContext();
@@ -26,6 +29,8 @@ export struct HomeView {
       AppContext.init(host.resourceManager);
     }
     this.loadResumeInfo();
+    const svc = AppContext.getAchievements();
+    this.achText = `${svc.unlockedCount} / ${svc.totalCount}`;
   }
 
   /** 读取存档摘要（主界面每次重新显示都会刷新） */
@@ -160,13 +165,40 @@ export struct HomeView {
         this.goRandom();
       })
 
+      // 入口 3：成就
+      Row() {
+        Text('★')
+          .fontSize(15)
+          .fontColor(AppConfig.LIGHT_ACCENT)
+        Text('成就')
+          .fontSize(13)
+          .fontColor(AppConfig.LIGHT_TEXT)
+          .margin({ left: 8 })
+        Blank()
+        Text(this.achText)
+          .fontSize(11)
+          .fontColor(AppConfig.LIGHT_SUB)
+        Text('›')
+          .fontSize(18)
+          .fontColor('#C4C8D0')
+          .margin({ left: 6 })
+      }
+      .width('100%')
+      .height(52)
+      .padding({ left: 16, right: 14 })
+      .margin({ top: 14 })
+      .backgroundColor(AppConfig.LIGHT_CARD)
+      .borderRadius(14)
+      .onClick(() => {
+        this.onGoAchievement();
+      })
+
       Blank()
 
       Text('数据为教学演示，非精确历史行情')
         .fontSize(10)
         .fontColor('#A6ABB4')
-        .margin({ bottom: 28 })
-    }
+        .margin({ bottom: 28 })    }
     .width('100%')
     .height('100%')
     .padding({ left: 24, right: 24 })

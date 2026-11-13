@@ -3,6 +3,7 @@ import { AppContext } from '../core/AppContext';
 import { Result } from '../core/Result';
 import { SaveService, SaveSnapshot } from '../core/SaveService';
 import { Account } from '../models/Account';
+import { AchievementContext, AchievementDef } from '../models/Achievement';
 import { KLine } from '../models/KLine';
 import { ScenarioData } from '../models/Scenario';
 import { ScenarioEvent } from '../models/ScenarioEvent';
@@ -81,6 +82,8 @@ export struct TradeView {
   private ctx: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
   private eventScroller: Scroller = new Scroller();
   private tickCount: number = 0;
+  /** 本局是否已计入结束统计（避免重复累计） */
+  private roundCounted: boolean = false;
 
   aboutToAppear(): void {
     const host = this.getUIContext().getHostContext();
@@ -182,6 +185,7 @@ export struct TradeView {
       AppContext.getTrading().reset();
     }
     this.bankrupt = false;
+    this.roundCounted = false;
     this.showTrade = false;
     this.showLoan = false;
     const meta = market.meta;
@@ -193,6 +197,7 @@ export struct TradeView {
     this.eventList = [];
     // 补出第 1 天事件（否则加载当天的事件永远不会触发）
     this.appendEvents(market.eventsToday());
+    AppContext.getAchievements().startSession();
     this.prices = [];
     const bar: KLine | null = market.currentBar;
     if (bar !== null) {
@@ -260,9 +265,11 @@ export struct TradeView {
     }
     this.finished = false;
     this.paused = false;
+    this.roundCounted = false;
     AppContext.getTrading().updateNetTracking(this.currentPrice);
     this.eventList = [];
     this.appendEvents(market.eventsToday()); // 补出第 1 天事件
+    AppContext.getAchievements().startSession();
     this.syncMarketText();
     this.syncAccount();
     this.drawChart();
@@ -305,11 +312,75 @@ export struct TradeView {
       // 不打断行情：事件累积到历史现场列表，可滑动回看
       this.appendEvents(events);
     }
+    // 每推进一天判定一次成就（如做空持仓、杠杆、净资产达标）
+    this.checkAchievements();
+    this.finishRound();
     // 每 5 个交易日存一次档，防止异常退出丢进度
     this.tickCount += 1;
     if (this.tickCount % 5 === 0) {
       this.saveSnapshot();
     }
+  }
+
+  /** 组装成就判定上下文 */
+  buildAchievementContext(): AchievementContext {
+    const market = AppContext.getMarket();
+    const trading = AppContext.getTrading();
+    const bar: KLine | null = market.currentBar;
+    const price: number = bar === null ? this.currentPrice : bar.price;
+    return {
+      scenarioId: this.scenarioId,
+      mode: this.mode,
+      dayIndex: market.dayIndex,
+      totalDays: market.totalDays,
+      finished: this.finished,
+      bankrupt: this.bankrupt,
+      netAsset: trading.netAsset(price),
+      price: price,
+      shares: trading.shares,
+      maxDrawdown: trading.maxDrawdown,
+      tradeCount: trading.tradeCount,
+      buyCount: trading.buyCount,
+      sellCount: trading.sellCount,
+      winRate: trading.winRate,
+      maxLeverage: trading.maxLeverageUsed,
+      totalBorrowed: trading.totalBorrowed
+    };
+  }
+
+  /** 弹出解锁提示 */
+  notifyAchievements(gained: AchievementDef[]): void {
+    if (gained.length === 0) {
+      return;
+    }
+    if (gained.length === 1) {
+      this.showTip(`解锁成就「${gained[0].name}」`);
+      return;
+    }
+    let names: string = '';
+    for (const a of gained) {
+      names = names === '' ? a.name : `${names}、${a.name}`;
+    }
+    this.showTip(`解锁 ${gained.length} 个成就：${names}`);
+  }
+
+  /** 判定普通成就 */
+  checkAchievements(): void {
+    if (this.bankrupt || this.finished) {
+      return;
+    }
+    const gained: AchievementDef[] = AppContext.getAchievements().check(this.buildAchievementContext());
+    this.notifyAchievements(gained);
+  }
+
+  /** 一局结束时累计统计并判定收尾成就（每局只算一次） */
+  finishRound(): void {
+    if (this.roundCounted || (!this.finished && !this.bankrupt)) {
+      return;
+    }
+    this.roundCounted = true;
+    const gained: AchievementDef[] = AppContext.getAchievements().finishRound(this.buildAchievementContext());
+    this.notifyAchievements(gained);
   }
 
   syncMarketText(): void {
@@ -452,6 +523,7 @@ export struct TradeView {
       this.showTip(this.tradeSide === 0 ? `买入 ${qty} 股成交` : `卖出 ${qty} 股成交`);
       this.syncAccount();
       this.saveSnapshot();
+      this.checkAchievements();
     } else {
       this.tradeTip = r.message;
     }
@@ -493,6 +565,7 @@ export struct TradeView {
       this.showTip(`已借入 ${this.formatMoney(amount)} 元`);
       this.syncAccount();
       this.saveSnapshot();
+      this.checkAchievements();
     } else {
       this.loanTip = r.message;
     }

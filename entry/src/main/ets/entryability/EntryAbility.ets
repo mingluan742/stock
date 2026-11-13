@@ -17,6 +17,7 @@ export default class EntryAbility extends UIAbility {
     // 绑定存档键到磁盘：AppStorage 中的变更会自动持久化
     try {
       PersistentStorage.persistProp('stock_snapshot', '');
+      PersistentStorage.persistProp('stock_achievements', '');
     } catch (err) {
       hilog.error(DOMAIN, 'testTag', 'Failed to persist prop. Cause: %{public}s', JSON.stringify(err));
     }

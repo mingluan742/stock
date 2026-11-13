@@ -262,5 +262,29 @@ export default function tradingServiceTest() {
       expect(t.maxDrawdown).assertEqual(0);
       expect(t.cash).assertEqual(AppConfig.INIT_CASH);
     });
+
+    it('应统计买卖笔数、最高杠杆与累计借款', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0, 0, 0, false));
+      expect(t.buyCount).assertEqual(0);
+      expect(t.maxLeverageUsed).assertEqual(1);
+      t.buy(100, 100, 0, 10);
+      t.sell(110, 100, 0);
+      expect(t.buyCount).assertEqual(1);
+      expect(t.sellCount).assertEqual(1);
+      expect(t.maxLeverageUsed).assertEqual(10);
+      // 更高杠杆应刷新记录
+      t.buy(100, 100, 0, 50);
+      expect(t.maxLeverageUsed).assertEqual(50);
+      // 累计借款：还清后再借也累计
+      t.borrow(200000);
+      t.repay(200000);
+      t.borrow(100000);
+      expect(t.totalBorrowed).assertEqual(300000);
+      // 重置后清零
+      t.reset();
+      expect(t.maxLeverageUsed).assertEqual(1);
+      expect(t.totalBorrowed).assertEqual(0);
+    });
   });
 }
