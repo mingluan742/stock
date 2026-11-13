@@ -3,10 +3,10 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: '53dda2f2-55b4-4276-b27d-d04583ebd113'
-  PropagateID: '53dda2f2-55b4-4276-b27d-d04583ebd113'
-  ReservedCode1: '4e4cb7ac-d96b-4fb4-a303-9ae763cb33f1'
-  ReservedCode2: '4e4cb7ac-d96b-4fb4-a303-9ae763cb33f1'
+  ProduceID: '4d78a4e0-6e60-44f4-80d6-4fa23e5ab46f'
+  PropagateID: '4d78a4e0-6e60-44f4-80d6-4fa23e5ab46f'
+  ReservedCode1: '3c45168b-3533-4a87-8b0c-2c448d29f9cd'
+  ReservedCode2: '3c45168b-3533-4a87-8b0c-2c448d29f9cd'
 ---
 
 # 涨跌实验室（StockLab）
@@ -102,10 +102,8 @@ entry/src/main/ets/
 
 | 服务 | 模型 | 说明 |
 |---|---|---|
-| 智谱 GLM-4-Flash | `glm-4-flash` | 长期免费，国内直连 |
-| 硅基流动 | `Qwen/Qwen2.5-7B-Instruct` | 注册送额度，部分小模型免费 |
-| 百度千帆 | `ernie-speed-8k` | 有免费额度 |
-| 本地 Ollama | `qwen2.5:3b` | 免 Key，需电脑常开且与手机同一局域网 |
+| 智谱 GLM-4-Flash | `glm-4-flash` | 免费，国内直连，注册即可用 |
+| 本地 Ollama | `qwen2.5:3b` | 完全免费，免 Key，需电脑常开且与手机同一局域网 |
 
 Key 只保存在本机（PersistentStorage），代码中不内置任何密钥；未填 Key 时自动使用本地文案。本地 / 局域网服务（`localhost`、`127.0.0.1`、`192.168.x.x`）不需要 Key。
 
@@ -136,7 +134,9 @@ Key 只保存在本机（PersistentStorage），代码中不内置任何密钥�
 | v1.4 | 新手教程：首次启动 4 步引导 + 口令「我是老手」跳过 + 主界面可重看 |
 | v1.5 | 首次打开先询问「新手 / 老手」，据此决定是否进教程；新手中途退出下次续看 |
 | v1.6 | 多空双向玩法：做多/做空按钮随持仓自动切换为加多/平多/平空/加空，新增一键平仓，做空敏口改为净资产 50 倍 |
-| v1.7 | 接入大模型：AI 复盘点评 + 模型设置页（Key 仅存本机）+ 失败自动退回本地文案 |`n| v1.8 | 模型设置页支持免费服务商一键预设（智谱/硅基/千帆/本地 Ollama）；本地服务免 Key |
+| v1.7 | 接入大模型：AI 复盘点评 + 模型设置页（Key 仅存本机）+ 失败自动退回本地文案 |
+| v1.8 | 模型设置页支持免费服务商一键预设；本地 Ollama 免 Key |
+| v1.9 | 只保留零成本方案：默认智谱 GLM-4-Flash，预设仅留智谱与本地 Ollama |
 
 ## 待办
 

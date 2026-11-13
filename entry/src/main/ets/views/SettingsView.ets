@@ -15,15 +15,7 @@ const PRESETS: AiPreset[] = [
     url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-4-flash'
   },
   {
-    name: '硅基流动', tag: '有免费模型',
-    url: 'https://api.siliconflow.cn/v1/chat/completions', model: 'Qwen/Qwen2.5-7B-Instruct'
-  },
-  {
-    name: '百度千帆', tag: '有免费额度',
-    url: 'https://qianfan.baidubce.com/v2/chat/completions', model: 'ernie-speed-8k'
-  },
-  {
-    name: '本地 Ollama', tag: '免 Key',
+    name: '本地 Ollama', tag: '完全免费',
     url: 'http://192.168.1.100:11434/v1/chat/completions', model: 'qwen2.5:3b'
   }
 ];
@@ -114,7 +106,7 @@ export struct SettingsView {
 
           // 免费服务商快选
           Column() {
-            Text('快速选择（都提供免费额度，Key 去官网申请）')
+            Text('快速选择（都不花钱，Key 去官网申请）')
               .fontSize(10)
               .fontColor(AppConfig.LIGHT_SUB)
             Flex({ wrap: FlexWrap.Wrap }) {
@@ -237,7 +229,7 @@ export struct SettingsView {
             Text('说明')
               .fontSize(11)
               .fontColor(AppConfig.LIGHT_TEXT)
-            Text('· Key 只保存在本机，不会上传到任何第三方服务器\n· 未填 Key 时，复盘页仍会显示本地生成的点评\n· 请求失败会自动退回本地文案，不影响使用\n· 接口需兼容 /chat/completions 格式（DeepSeek、通义、智谱等均可）')
+            Text('· Key 只保存在本机，不会上传到任何第三方服务器\n· 未填 Key 时，复盘页仍会显示本地生成的点评\n· 请求失败会自动退回本地文案，不影响使用\n· 默认接智谱 GLM-4-Flash（免费），地址与模型名可自行替换')
               .fontSize(10)
               .fontColor('#8B909A')
               .lineHeight(19)

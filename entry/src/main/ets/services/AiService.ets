@@ -54,7 +54,7 @@ export interface ReviewInput {
 
 /**
  * 大模型服务：兼容 OpenAI 的 /chat/completions 协议
- * - 默认 DeepSeek，可在设置页改成任意兼容接口
+ * - 默认智谱 GLM-4-Flash（目前免费），也可改成任意兼容接口
  * - Key 只存本机，代码中不内置任何密钥
  * - 无 Key 或请求失败时抛错，由调用方退回本地文案
  */
@@ -63,8 +63,8 @@ export class AiService {
   static readonly MODEL_KEY: string = 'ai_model';
   static readonly KEY_KEY: string = 'ai_api_key';
 
-  static readonly DEFAULT_URL: string = 'https://api.deepseek.com/v1/chat/completions';
-  static readonly DEFAULT_MODEL: string = 'deepseek-chat';
+  static readonly DEFAULT_URL: string = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+  static readonly DEFAULT_MODEL: string = 'glm-4-flash';
 
   private static read(k: string, def: string): string {
     try {
