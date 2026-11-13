@@ -89,6 +89,12 @@ export struct AchievementView {
       .width('100%')
       .padding({ left: 20, right: 20, top: 14 })
 
+      Text('未解锁的成就只显示名字，具体条件在达成后揭晓')
+        .fontSize(10)
+        .fontColor('#A6ABB4')
+        .width('100%')
+        .padding({ left: 20, right: 20, top: 10 })
+
       // 成就网格
       Grid() {
         ForEach(this.items, (item: AchievementItem) => {
@@ -124,7 +130,7 @@ export struct AchievementView {
                 .margin({ top: 8 })
                 .width('100%')
 
-              Text(item.desc)
+              Text(item.unlocked ? item.desc : '？？？　条件未公开')
                 .fontSize(10)
                 .fontColor(item.unlocked ? AppConfig.LIGHT_SUB : '#B0B5BD')
                 .lineHeight(15)
