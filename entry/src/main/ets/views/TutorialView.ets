@@ -51,7 +51,6 @@ export struct TutorialView {
   @State hint: string = '';
   @State bullets: string[] = [];
   @State skipInput: string = '';
-  @State skipError: string = '';
 
   aboutToAppear(): void {
     this.applyStep(0);
@@ -81,22 +80,13 @@ export struct TutorialView {
     }
   }
 
-  /** 输入口令时实时匹配，匹配即跳过 */
+  /** 输入口令时实时匹配，匹配即跳过（不提示、不报错，避免泄露口令） */
   onSkipChange(v: string): void {
     this.skipInput = v;
-    this.skipError = '';
     if (TutorialService.isSkipWord(v)) {
-      this.doSkip();
+      TutorialService.skip();
+      this.onDone();
     }
-  }
-
-  doSkip(): void {
-    if (!TutorialService.isSkipWord(this.skipInput)) {
-      this.skipError = `口令不对，请输入「${TutorialService.SKIP_WORD}」`;
-      return;
-    }
-    TutorialService.skip();
-    this.onDone();
   }
 
   build() {
@@ -185,39 +175,19 @@ export struct TutorialView {
 
       Blank()
 
-      // 口令跳过
+      // 口令跳过（隐藏入口：输对了直接跳过，输错不提示）
       Column() {
-        Row() {
-          TextInput({ text: this.skipInput, placeholder: `已会用？输入「${TutorialService.SKIP_WORD}」跳过` })
-            .layoutWeight(1)
-            .height(42)
-            .fontSize(12)
-            .fontColor(AppConfig.LIGHT_TEXT)
-            .placeholderColor('#A6ABB4')
-            .backgroundColor('#F1F2F5')
-            .borderRadius(10)
-            .onChange((v: string) => {
-              this.onSkipChange(v);
-            })
-          Button('跳过')
-            .height(42)
-            .fontSize(12)
-            .margin({ left: 8 })
-            .backgroundColor('#EDEFF3')
-            .fontColor('#5A606B')
-            .onClick(() => {
-              this.doSkip();
-            })
-        }
-        .width('100%')
-
-        if (this.skipError !== '') {
-          Text(this.skipError)
-            .fontSize(10)
-            .fontColor('#E64545')
-            .width('100%')
-            .margin({ top: 6 })
-        }
+        TextInput({ text: this.skipInput, placeholder: '已经会了？可以在这里写下你的判断' })
+          .width('100%')
+          .height(42)
+          .fontSize(12)
+          .fontColor(AppConfig.LIGHT_TEXT)
+          .placeholderColor('#A6ABB4')
+          .backgroundColor('#F1F2F5')
+          .borderRadius(10)
+          .onChange((v: string) => {
+            this.onSkipChange(v);
+          })
       }
       .width('100%')
       .padding({ left: 24, right: 24, bottom: 8 })
