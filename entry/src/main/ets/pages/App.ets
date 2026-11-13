@@ -7,6 +7,7 @@ import { HomeView } from '../views/HomeView';
 import { ResultView } from '../views/ResultView';
 import { TradeView } from '../views/TradeView';
 import { TutorialView } from '../views/TutorialView';
+import { WelcomeView } from '../views/WelcomeView';
 
 /**
  * 应用唯一入口页：用状态机切换四个视图
@@ -25,9 +26,11 @@ struct App {
   /** 下一局是否从存档继续 */
   @State resume: boolean = false;
 
-  /** 首次启动先看新手教程 */
+  /** 首次启动先问是不是新手；选了新手但没看完的，下次接着看 */
   aboutToAppear(): void {
-    if (!TutorialService.finished) {
+    if (TutorialService.needsWelcome) {
+      this.view = 'welcome';
+    } else if (TutorialService.pendingTutorial) {
       this.view = 'tutorial';
     }
   }
@@ -88,6 +91,17 @@ struct App {
       } else if (this.view === 'tutorial') {
         TutorialView({
           onDone: () => {
+            this.view = 'home';
+          }
+        })
+      } else if (this.view === 'welcome') {
+        WelcomeView({
+          onNewbie: () => {
+            TutorialService.chooseNewbie();
+            this.view = 'tutorial';
+          },
+          onExpert: () => {
+            TutorialService.chooseExpert();
             this.view = 'home';
           }
         })

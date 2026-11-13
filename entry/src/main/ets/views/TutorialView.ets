@@ -50,7 +50,6 @@ export struct TutorialView {
   @State body: string = '';
   @State hint: string = '';
   @State bullets: string[] = [];
-  @State skipInput: string = '';
 
   aboutToAppear(): void {
     this.applyStep(0);
@@ -77,15 +76,6 @@ export struct TutorialView {
   prev(): void {
     if (this.step > 0) {
       this.applyStep(this.step - 1);
-    }
-  }
-
-  /** 输入口令时实时匹配，匹配即跳过（不提示、不报错，避免泄露口令） */
-  onSkipChange(v: string): void {
-    this.skipInput = v;
-    if (TutorialService.isSkipWord(v)) {
-      TutorialService.skip();
-      this.onDone();
     }
   }
 
@@ -174,23 +164,6 @@ export struct TutorialView {
       .shadow({ radius: 16, color: 'rgba(16,24,40,0.06)', offsetX: 0, offsetY: 4 })
 
       Blank()
-
-      // 口令跳过（隐藏入口：输对了直接跳过，输错不提示）
-      Column() {
-        TextInput({ text: this.skipInput, placeholder: '已经会了？可以在这里写下你的判断' })
-          .width('100%')
-          .height(42)
-          .fontSize(12)
-          .fontColor(AppConfig.LIGHT_TEXT)
-          .placeholderColor('#A6ABB4')
-          .backgroundColor('#F1F2F5')
-          .borderRadius(10)
-          .onChange((v: string) => {
-            this.onSkipChange(v);
-          })
-      }
-      .width('100%')
-      .padding({ left: 24, right: 24, bottom: 8 })
 
       // 翻页
       Row({ space: 10 }) {

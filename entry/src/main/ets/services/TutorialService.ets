@@ -1,47 +1,60 @@
 /**
- * 新手教程状态：本机持久化
- * - 未完成：应用启动时自动进入教程
- * - 完成 / 口令跳过：不再自动弹出
+ * 新手引导状态：本机持久化
+ * - 首次打开先询问是否为新手
+ * - 新手 → 看完整教程；老手 → 直接进入主界面
+ * 标记值：'' 未决定 / 'newbie' 新手 / 'expert' 老手 / 'done' 已看完教程
  */
 export class TutorialService {
   static readonly KEY: string = 'stock_tutorial';
-  /** 口令：输入这四个字直接跳过 */
-  static readonly SKIP_WORD: string = '我是老手';
 
-  /** 是否已看过（完成或跳过） */
-  static get finished(): boolean {
+  private static read(): string {
     try {
       const v: string | undefined = AppStorage.get<string>(TutorialService.KEY);
-      return v === 'done' || v === 'skipped';
+      return v === undefined ? '' : v;
     } catch (err) {
       const e = err as Error;
-      console.info(`[StockLab] 教程状态读取失败: ${e.message}`);
-      return false;
+      console.info(`[StockLab] 引导状态读取失败: ${e.message}`);
+      return '';
     }
   }
 
-  /** 走完全部步骤 */
-  static complete(): void {
-    TutorialService.write('done');
-  }
-
-  /** 口令跳过 */
-  static skip(): void {
-    TutorialService.write('skipped');
-  }
-
-  /** 重新观看（不清除已看过标记，只是本次进入） */
   private static write(v: string): void {
     try {
       AppStorage.setOrCreate<string>(TutorialService.KEY, v);
     } catch (err) {
       const e = err as Error;
-      console.info(`[StockLab] 教程状态写入失败: ${e.message}`);
+      console.info(`[StockLab] 引导状态写入失败: ${e.message}`);
     }
   }
 
-  /** 去掉空格后判断是否输对了口令 */
-  static isSkipWord(input: string): boolean {
-    return input.replace(/\s/g, '') === TutorialService.SKIP_WORD;
+  /** 是否已经做过选择（新手/老手），没选过就先问 */
+  static get needsWelcome(): boolean {
+    return TutorialService.read() === '';
+  }
+
+  /** 选了新手但教程还没看完（中途退出过），下次继续看 */
+  static get pendingTutorial(): boolean {
+    return TutorialService.read() === 'newbie';
+  }
+
+  /** 是否已经完整看过教程（含新手直接看完、老手跳过） */
+  static get finished(): boolean {
+    const v: string = TutorialService.read();
+    return v === 'newbie' || v === 'expert' || v === 'done';
+  }
+
+  /** 用户自认老手：跳过教程 */
+  static chooseExpert(): void {
+    TutorialService.write('expert');
+  }
+
+  /** 用户自认新手：标记后进入教程 */
+  static chooseNewbie(): void {
+    TutorialService.write('newbie');
+  }
+
+  /** 教程走完 */
+  static complete(): void {
+    TutorialService.write('done');
   }
 }
