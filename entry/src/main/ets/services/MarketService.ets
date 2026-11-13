@@ -28,6 +28,20 @@ export class MarketService {
     this.cursor = 0;
   }
 
+  /** 直接载入一份现成的剧本数据（随机模拟使用） */
+  loadData(data: ScenarioData): void {
+    this.data = data;
+    this.cursor = 0;
+  }
+
+  /** 剧本包含的历史事件数量 */
+  get eventCount(): number {
+    if (this.data === null) {
+      return 0;
+    }
+    return this.data.events.length;
+  }
+
   get loaded(): boolean {
     return this.data !== null;
   }

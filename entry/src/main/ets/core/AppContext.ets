@@ -1,6 +1,7 @@
 import { resourceManager } from '@kit.LocalizationKit';
 import { BuiltinScenarioSource } from '../repository/BuiltinScenarioSource';
 import { MarketService } from '../services/MarketService';
+import { RandomScenarioService } from '../services/RandomScenarioService';
 import { TradingService } from '../services/TradingService';
 
 /**
@@ -10,6 +11,7 @@ import { TradingService } from '../services/TradingService';
 export class AppContext {
   private static marketService: MarketService | null = null;
   private static tradingService: TradingService | null = null;
+  private static randomService: RandomScenarioService | null = null;
 
   /** 应用启动时调用一次；重复调用安全 */
   static init(rm: resourceManager.ResourceManager): void {
@@ -34,5 +36,12 @@ export class AppContext {
       throw new Error('AppContext 尚未初始化，请先在 EntryAbility.onCreate 中调用 init');
     }
     return AppContext.tradingService;
+  }
+
+  static getRandom(): RandomScenarioService {
+    if (AppContext.randomService === null) {
+      AppContext.randomService = new RandomScenarioService();
+    }
+    return AppContext.randomService;
   }
 }

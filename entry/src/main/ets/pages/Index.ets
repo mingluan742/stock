@@ -3,7 +3,14 @@ import { AppContext } from '../core/AppContext';
 import { Result } from '../core/Result';
 import { Account } from '../models/Account';
 import { KLine } from '../models/KLine';
+import { ScenarioData } from '../models/Scenario';
 import { ScenarioEvent } from '../models/ScenarioEvent';
+
+/** 路由参数：mode = history（历史剧本）| random（随机模拟） */
+interface TradeRouteParams {
+  mode: string;
+  id: string;
+}
 
 /** 图表最多同时显示的样本数（超出后向左滚动） */
 const MAX_POINTS: number = 60;
@@ -46,6 +53,8 @@ struct Index {
   private currentPrice: number = 0;
   private lastRatio: number = 0;
   private timerId: number = -1;
+  private mode: string = 'history';
+  private scenarioId: string = AppConfig.DEFAULT_SCENARIO;
   private settings: RenderingContextSettings = new RenderingContextSettings(true);
   private ctx: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
   private eventScroller: Scroller = new Scroller();
@@ -55,7 +64,30 @@ struct Index {
     if (host !== undefined) {
       AppContext.init(host.resourceManager);
     }
-    this.loadScenario(AppConfig.DEFAULT_SCENARIO);
+    this.readRouteParams();
+    if (this.mode === 'random') {
+      this.loadRandom();
+    } else {
+      this.loadScenario(this.scenarioId);
+    }
+  }
+
+  /** 读取主界面传来的路由参数 */
+  readRouteParams(): void {
+    try {
+      const params = this.getUIContext().getRouter().getParams() as TradeRouteParams;
+      if (params !== undefined && params !== null) {
+        if (params.mode !== undefined && params.mode !== null) {
+          this.mode = params.mode;
+        }
+        if (params.id !== undefined && params.id !== null && params.id !== '') {
+          this.scenarioId = params.id;
+        }
+      }
+    } catch (err) {
+      const e = err as Error;
+      console.info(`[StockLab] 无路由参数，使用默认剧本: ${e.message}`);
+    }
   }
 
   aboutToDisappear(): void {
@@ -65,29 +97,50 @@ struct Index {
   async loadScenario(id: string): Promise<void> {
     try {
       await AppContext.getMarket().load(id);
-      const meta = AppContext.getMarket().meta;
-      if (meta !== null) {
-        this.scenarioName = meta.name;
-        this.eraText = meta.era;
-        this.introText = meta.intro;
-      }
-      this.eventList = [];
-      // 修复：加载当天（第 1 天）的事件原先永远不触发，此处补上
-      this.appendEvents(AppContext.getMarket().eventsToday());
-      this.prices = [];
-      const bar: KLine | null = AppContext.getMarket().currentBar;
-      if (bar !== null) {
-        this.prices.push(bar.price);
-        this.currentPrice = bar.price;
-      }
-      this.syncMarketText();
-      this.syncAccount();
-      this.drawChart();
-      this.startPlay();
+      this.applyLoaded();
     } catch (err) {
       const e = err as Error;
       this.scenarioName = `加载失败：${e.message}`;
     }
+  }
+
+  /** 生成并载入一局随机行情 */
+  loadRandom(): void {
+    try {
+      const data: ScenarioData = AppContext.getRandom().generate();
+      AppContext.getMarket().loadData(data);
+      this.applyLoaded();
+    } catch (err) {
+      const e = err as Error;
+      this.scenarioName = `生成失败：${e.message}`;
+    }
+  }
+
+  /** 剧本载入后的页面初始化（历史与随机共用） */
+  applyLoaded(): void {
+    const market = AppContext.getMarket();
+    // 每一局都是独立账户：进入时重置现金与持仓
+    AppContext.getTrading().reset();
+    const meta = market.meta;
+    if (meta !== null) {
+      this.scenarioName = meta.name;
+      this.eraText = meta.era;
+      this.introText = meta.intro;
+    }
+    this.eventList = [];
+    // 补出第 1 天事件（否则加载当天的事件永远不会触发）
+    this.appendEvents(market.eventsToday());
+    this.prices = [];
+    const bar: KLine | null = market.currentBar;
+    if (bar !== null) {
+      this.prices.push(bar.price);
+      this.currentPrice = bar.price;
+    }
+    this.finished = false;
+    this.syncMarketText();
+    this.syncAccount();
+    this.drawChart();
+    this.startPlay();
   }
 
   startPlay(): void {
@@ -126,8 +179,12 @@ struct Index {
     }, 60);
   }
 
-  /** 重播当前剧本，并重置账户 */
+  /** 重播：历史剧本从头再来，随机模式重新生成一局 */
   replay(): void {
+    if (this.mode === 'random') {
+      this.loadRandom();
+      return;
+    }
     const market = AppContext.getMarket();
     market.restart();
     AppContext.getTrading().reset();
@@ -441,10 +498,20 @@ struct Index {
       Column() {
         // 顶栏
         Row() {
+          Text('‹')
+            .fontSize(26)
+            .fontColor(AppConfig.COLOR_SUB)
+            .width(26)
+            .textAlign(TextAlign.Center)
+            .onClick(() => {
+              this.stopPlay();
+              this.getUIContext().getRouter().back();
+            })
           Text(AppConfig.APP_NAME)
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
             .fontColor(AppConfig.COLOR_TEXT)
+            .margin({ left: 4 })
           Blank()
           Text(this.scenarioName)
             .fontSize(12)
@@ -639,7 +706,7 @@ struct Index {
 
         // 操作区：播放控制 + 买卖常驻
         Row({ space: 10 }) {
-          Button(this.finished ? '重播剧情' : (this.paused ? '继续播放' : '暂停播放'))
+          Button(this.finished ? (this.mode === 'random' ? '再来一局' : '重播剧情') : (this.paused ? '继续播放' : '暂停播放'))
             .layoutWeight(1)
             .height(46)
             .fontSize(14)
