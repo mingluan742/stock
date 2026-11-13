@@ -3,10 +3,10 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: 'af1dc36e-7fb6-4d43-826d-81b843fa29f0'
-  PropagateID: 'af1dc36e-7fb6-4d43-826d-81b843fa29f0'
-  ReservedCode1: '10b25932-eaa0-4179-bbb1-58bfc9bec253'
-  ReservedCode2: '10b25932-eaa0-4179-bbb1-58bfc9bec253'
+  ProduceID: '19e50644-388e-4d4c-a729-009ba75830a1'
+  PropagateID: '19e50644-388e-4d4c-a729-009ba75830a1'
+  ReservedCode1: 'dd220f07-88ed-42c2-b530-2f2eaa22d8d1'
+  ReservedCode2: 'dd220f07-88ed-42c2-b530-2f2eaa22d8d1'
 ---
 
 # 涨跌实验室（StockLab）
@@ -37,13 +37,14 @@ AIGC:
 | 存档 | 自动保存当前对局（每 5 个交易日 + 每次交易），主界面可"继续上一局" |
 | 结算复盘 | 收益率、最大回撤、交易笔数、胜率、手续费；全程行情曲线标注买卖点；逐笔流水；与"买入持有"对照 |
 | 成就系统 | 15 个成就（首次出手 / 逆向思维 / 五十倍狂热 / 归零体验 / 空仓到底 等），实时判定、本机持久化，主界面可查看收集进度；未解锁的成就只显示名字，条件在达成后揭晓 |
+| 新手教程 | 首次启动自动进入 4 步图文引导；底部输入口令「我是老手」可立即跳过；主界面可随时重看 |
 
 ## 技术架构
 
 单体应用分五层 + 两个横切关注点：
 
 ```
-L1 表现层   views/（HomeView / HistoryView / TradeView / ResultView / AchievementView）+ pages/App.ets（状态机入口）
+L1 表现层   views/（HomeView / HistoryView / TradeView / ResultView / AchievementView / TutorialView）+ pages/App.ets（状态机入口）
 L2 调度层   视图内状态与交互编排（@State / @Prop）
 L3 业务层   services/（MarketService 行情、TradingService 交易、RandomScenarioService 随机生成、AchievementService 成就）
 L4 数据层   repository/（IMarketDataSource 接口 + BuiltinScenarioSource 实现）
@@ -56,8 +57,8 @@ L5 存储层   core/SaveService（AppStorage + PersistentStorage JSON 快照）
 
 ```
 entry/src/main/ets/
-├─ pages/App.ets            唯一入口页，状态机切换五个视图
-├─ views/                   五个视图组件（主界面 / 剧本列表 / 盯盘 / 复盘 / 成就）
+├─ pages/App.ets            唯一入口页，状态机切换六个视图
+├─ views/                   六个视图组件（主界面 / 剧本列表 / 盯盘 / 复盘 / 成就 / 教程）
 ├─ services/                行情、交易、随机生成
 ├─ repository/              数据源接口与内置实现
 │  └─ data/                 ArkTS 内置剧本数据（rawfile 不可用时的回退）
@@ -71,7 +72,7 @@ entry/src/main/ets/
 
 - **接口驱动数据源**：`IMarketDataSource` 定义"剧本目录 + 加载剧本"，`BuiltinScenarioSource` 优先读 rawfile，失败自动回退 ArkTS 内置数据（兼容预览器）；
 - **规则参数化**：每个剧本自带 `rules`（涨跌停、T+1、费率、能否做空），同一套交易代码跑出不同市场；
-- **状态机代替路由**：五视图用 `@State view` 切换，避免预览器不支持 router 的问题；
+- **状态机代替路由**：六视图用 `@State view` 切换，避免预览器不支持 router 的问题；
 - **确定性伪随机**：K线高低点用 `Math.sin` 按蜡烛序号派生，重绘不闪烁；
 - **单例装配**：`AppContext` 统一创建服务，换数据源只改一行。
 
@@ -111,6 +112,7 @@ entry/src/main/ets/
 | v1.2 | 成就系统：15 个成就 + 实时判定 + 本机持久化 + 成就收集页 |
 | v1.2.1 | 未解锁成就隐藏条件，达成后揭晓 |
 | v1.3 | 下单区重构：弹出式表单改为常驻面板（保证金 + 杠杆滑块 + 参数反馈 + 双按钮） |
+| v1.4 | 新手教程：首次启动 4 步引导 + 口令「我是老手」跳过 + 主界面可重看 |
 
 ## 待办
 

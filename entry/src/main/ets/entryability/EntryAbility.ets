@@ -18,6 +18,7 @@ export default class EntryAbility extends UIAbility {
     try {
       PersistentStorage.persistProp('stock_snapshot', '');
       PersistentStorage.persistProp('stock_achievements', '');
+      PersistentStorage.persistProp('stock_tutorial', '');
     } catch (err) {
       hilog.error(DOMAIN, 'testTag', 'Failed to persist prop. Cause: %{public}s', JSON.stringify(err));
     }

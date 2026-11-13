@@ -17,6 +17,8 @@ export struct HomeView {
   onResume: () => void = () => {};
   /** 进入成就页 */
   onGoAchievement: () => void = () => {};
+  /** 重看新手教程 */
+  onGoTutorial: () => void = () => {};
 
   @State hasResume: boolean = false;
   @State resumeTitle: string = '';
@@ -192,6 +194,14 @@ export struct HomeView {
       .onClick(() => {
         this.onGoAchievement();
       })
+
+      Text('新手教程 ›')
+        .fontSize(11)
+        .fontColor('#8B909A')
+        .padding({ top: 10, bottom: 4 })
+        .onClick(() => {
+          this.onGoTutorial();
+        })
 
       Blank()
 
