@@ -3,15 +3,15 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: '8cbb9e25-d94d-436a-86b1-9c8c63c16a97'
-  PropagateID: '8cbb9e25-d94d-436a-86b1-9c8c63c16a97'
-  ReservedCode1: '95311b9a-8f9e-47cd-8da9-bd52f90a0036'
-  ReservedCode2: '95311b9a-8f9e-47cd-8da9-bd52f90a0036'
+  ProduceID: '4cfffee2-2a8e-4ad2-861d-473757f5a932'
+  PropagateID: '4cfffee2-2a8e-4ad2-861d-473757f5a932'
+  ReservedCode1: 'de3d937f-b7b0-4450-bd0d-1546ee6fda1e'
+  ReservedCode2: 'de3d937f-b7b0-4450-bd0d-1546ee6fda1e'
 ---
 
 # 涨跌实验室（StockLab）
 
-一款 HarmonyOS 的"历史股市模拟器"：在真实发生过的市场里（1929 大崩盘、2015 A股股灾）或用算法随机生成的市场里，实时盯盘、买卖、加杠杆、借贷款，体验不同的市场规则与人性。
+一款 HarmonyOS 的"历史股市模拟器"：在真实发生过的市场里（1929 大崩盘、1987 黑色星期一、2000 互联网泡沫、2008 次贷危机、2015 A股股灾、2016 熔断、2020 疫情熔断）或用算法随机生成的市场里，实时盯盘、买卖、加杠杆、借贷款，体验不同的市场规则与人性。
 
 > 数据为教学演示，关键历史点位取自公开资料，节点之间为插值生成，非精确历史行情，不构成任何投资建议。
 
@@ -26,7 +26,7 @@ AIGC:
 
 | 模块 | 说明 |
 |---|---|
-| 历史剧本 | 1929 大崩盘（道指 744 个交易日）、2015 A股股灾（上证 168 个交易日） |
+| 历史剧本 | 7 个时代：1929 大崩盘（744 日）、1987 黑色星期一（260 日）、2000 互联网泡沫（723 日）、2008 次贷危机（370 日）、2015 A股股灾（168 日）、2016 A股熔断（131 日）、2020 疫情熔断（84 日） |
 | 随机模拟 | 算法即时生成：随机股票名、260~440 个交易日、分段牛熊、随机突发消息、随机市场规则 |
 | 实时盯盘 | 定时推进行情，Canvas 分时曲线自动生长；可分时 / K线双模式切换 |
 | 历史现场 | 走到历史事件日自动累积事件卡片，可上下滑动回看 |
@@ -34,13 +34,14 @@ AIGC:
 | 贷款 | 额度 100 万、年化 8%、按交易日复利计息、可借可还；净资产 ≤ 0 爆仓 |
 | 杠杆 | 1x / 2x / 5x / 10x / 20x / **50x**，按保证金交易，不足部分自动融资（配资独立于普通借款额度） |
 | 存档 | 自动保存当前对局（每 5 个交易日 + 每次交易），主界面可"继续上一局" |
+| 结算复盘 | 收益率、最大回撤、交易笔数、胜率、手续费；全程行情曲线标注买卖点；逐笔流水；与"买入持有"对照 |
 
 ## 技术架构
 
 单体应用分五层 + 两个横切关注点：
 
 ```
-L1 表现层   views/（HomeView / HistoryView / TradeView）+ pages/App.ets（状态机入口）
+L1 表现层   views/（HomeView / HistoryView / TradeView / ResultView）+ pages/App.ets（状态机入口）
 L2 调度层   视图内状态与交互编排（@State / @Prop）
 L3 业务层   services/（MarketService 行情、TradingService 交易、RandomScenarioService 随机生成）
 L4 数据层   repository/（IMarketDataSource 接口 + BuiltinScenarioSource 实现）
@@ -53,8 +54,8 @@ L5 存储层   core/SaveService（AppStorage + PersistentStorage JSON 快照）
 
 ```
 entry/src/main/ets/
-├─ pages/App.ets            唯一入口页，状态机切换三个视图
-├─ views/                   三个视图组件（主界面 / 剧本列表 / 盯盘）
+├─ pages/App.ets            唯一入口页，状态机切换四个视图
+├─ views/                   四个视图组件（主界面 / 剧本列表 / 盯盘 / 复盘）
 ├─ services/                行情、交易、随机生成
 ├─ repository/              数据源接口与内置实现
 │  └─ data/                 ArkTS 内置剧本数据（rawfile 不可用时的回退）
@@ -68,7 +69,7 @@ entry/src/main/ets/
 
 - **接口驱动数据源**：`IMarketDataSource` 定义"剧本目录 + 加载剧本"，`BuiltinScenarioSource` 优先读 rawfile，失败自动回退 ArkTS 内置数据（兼容预览器）；
 - **规则参数化**：每个剧本自带 `rules`（涨跌停、T+1、费率、能否做空），同一套交易代码跑出不同市场；
-- **状态机代替路由**：三视图用 `@State view` 切换，避免预览器不支持 router 的问题；
+- **状态机代替路由**：四视图用 `@State view` 切换，避免预览器不支持 router 的问题；
 - **确定性伪随机**：K线高低点用 `Math.sin` 按蜡烛序号派生，重绘不闪烁；
 - **单例装配**：`AppContext` 统一创建服务，换数据源只改一行。
 
@@ -86,7 +87,7 @@ entry/src/main/ets/
 
 ## 单元测试
 
-`entry/src/test/TradingService.test.ets` 覆盖 14 个用例：手续费、现金校验、均价结转、T+1、涨跌停、做空、贷款计息、杠杆保证金、净资产与爆仓。
+`entry/src/test/TradingService.test.ets` 覆盖 22 个用例：手续费、现金校验、均价结转、T+1、涨跌停、做空、贷款计息、杠杆保证金、净资产与爆仓、交易流水与已实现盈亏、胜率、最大回撤、快照恢复、重置。
 
 - DevEco 中右键 `entry/src/test` → Run Tests
 - 或命令行：`hvigorw --mode module -p module=entry@default -p product=default test`
@@ -103,12 +104,14 @@ entry/src/main/ets/
 | v0.7 | P0 交易规则（手续费/T+1/涨跌停/做空）+ 数量输入 + 贷款与爆仓 |
 | v0.8 | 修复预览器无法跳转：单页状态机 + 视图组件化 |
 | v0.9 | 杠杆交易 + 对局存档/继续 + 单元测试 + README |
+| v1.0 | 杠杆上限提升至 50 倍，配资独立记账，总债务上限 |
+| v1.1 | 交易流水与最大回撤 + 结算复盘页（买卖点标注）+ 新增 5 个历史剧本 |
 
 ## 待办
 
-- [ ] 结算复盘页（收益率、最大回撤、买卖点标注）
-- [ ] 交易流水记录页
-- [ ] 更多历史剧本（1987 黑色星期一、2000 互联网泡沫、2008 次贷、2016 熔断、2020 疫情熔断）
+- [x] 结算复盘页（收益率、最大回撤、买卖点标注）
+- [x] 交易流水记录
+- [x] 更多历史剧本（1987 / 2000 / 2008 / 2016 / 2020）
 - [ ] 设计书与实现对齐
 
 > AI生成

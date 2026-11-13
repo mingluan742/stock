@@ -2,6 +2,7 @@ import { AppConfig } from '../config/AppConfig';
 import { Result } from '../core/Result';
 import { Account } from '../models/Account';
 import { MarketRuleConfig } from '../models/Scenario';
+import { TradeRecord } from '../models/TradeRecord';
 
 /** 账户快照（持久化 / 恢复用） */
 export interface AccountSnapshot {
@@ -12,6 +13,12 @@ export interface AccountSnapshot {
   leveragePrincipal: number;
   loanInterest: number;
   feeTotal: number;
+  /** 交易流水（旧存档可能缺失） */
+  records?: TradeRecord[];
+  /** 净值峰值（旧存档可能缺失） */
+  peak?: number;
+  /** 最大回撤（旧存档可能缺失） */
+  maxDrawdown?: number;
 }
 
 /** 做空上限（股），避免无限做空破坏体验 */
@@ -41,6 +48,12 @@ export class TradingService {
   private leveragePrincipal: number = 0;
   /** 累计未还利息 */
   private loanInterest: number = 0;
+  /** 交易流水 */
+  private records: TradeRecord[] = [];
+  /** 净值峰值（计算最大回撤） */
+  private peakNetValue: number = 0;
+  /** 最大回撤（0~1） */
+  private maxDrawdownValue: number = 0;
 
   /** 切换剧本规则并重置账户 */
   setRules(rules: MarketRuleConfig): void {
@@ -139,8 +152,9 @@ export class TradingService {
     // 若当前是空头，先按均价平空，剩余部分转为多头
     const closeQty: number = Math.min(qty, Math.max(0, -this.account.shares));
     const openQty: number = qty - closeQty;
+    const shortAvg: number = this.avgCost;
     if (closeQty > 0) {
-      this.account.cost += this.avgCost * closeQty;
+      this.account.cost += shortAvg * closeQty;
     }
     if (openQty > 0) {
       this.account.cost += price * openQty;
@@ -156,6 +170,17 @@ export class TradingService {
       this.todayBought += openQty;
     }
     this.feeTotalValue += fee;
+    // 平空部分已实现盈亏
+    const realized: number = closeQty > 0 ? (shortAvg - price) * closeQty : 0;
+    this.records.push({
+      date: this.lastDate,
+      side: '买',
+      price: price,
+      qty: qty,
+      fee: fee,
+      amount: amount,
+      realized: realized
+    });
     return Result.success(this.account);
   }
 
@@ -192,8 +217,9 @@ export class TradingService {
     // 多头部分按均价结转成本，超出部分转为空头按卖出价记成本
     const closeQty: number = Math.min(qty, Math.max(0, this.account.shares));
     const openQty: number = qty - closeQty;
+    const longAvg: number = this.avgCost;
     if (closeQty > 0) {
-      this.account.cost -= this.avgCost * closeQty;
+      this.account.cost -= longAvg * closeQty;
     }
     if (openQty > 0) {
       this.account.cost -= price * openQty;
@@ -204,6 +230,17 @@ export class TradingService {
       this.account.cost = 0;
     }
     this.feeTotalValue += fee;
+    // 平多部分已实现盈亏（相对持仓均价）
+    const realized: number = closeQty > 0 ? (price - longAvg) * closeQty : 0;
+    this.records.push({
+      date: this.lastDate,
+      side: '卖',
+      price: price,
+      qty: qty,
+      fee: fee,
+      amount: amount,
+      realized: realized
+    });
     return Result.success(this.account);
   }
 
@@ -260,6 +297,65 @@ export class TradingService {
     return this.feeTotalValue;
   }
 
+  /** 交易流水 */
+  get tradeRecords(): TradeRecord[] {
+    return this.records;
+  }
+
+  /** 成交笔数 */
+  get tradeCount(): number {
+    return this.records.length;
+  }
+
+  /** 胜率：盈利的卖出笔数 / 总卖出笔数 */
+  get winRate(): number {
+    let sells: number = 0;
+    let wins: number = 0;
+    for (const r of this.records) {
+      if (r.side === '卖') {
+        sells += 1;
+        if (r.realized > 0) {
+          wins += 1;
+        }
+      }
+    }
+    if (sells === 0) {
+      return 0;
+    }
+    return wins / sells;
+  }
+
+  /** 实时更新净值峰值与最大回撤（每个交易日调用） */
+  updateNetTracking(price: number): void {
+    const net: number = this.netAsset(price);
+    if (this.peakNetValue === 0 || net > this.peakNetValue) {
+      this.peakNetValue = net;
+    }
+    if (this.peakNetValue > 0) {
+      const dd: number = (this.peakNetValue - net) / this.peakNetValue;
+      if (dd > this.maxDrawdownValue) {
+        this.maxDrawdownValue = dd;
+      }
+    }
+  }
+
+  /** 最大回撤（0~1） */
+  get maxDrawdown(): number {
+    return this.maxDrawdownValue;
+  }
+
+  /** 净值峰值 */
+  get peakNet(): number {
+    return this.peakNetValue;
+  }
+
+  /** 恢复流水与回撤统计（继续上一局用） */
+  restoreStats(list: TradeRecord[], peak: number, dd: number): void {
+    this.records = list;
+    this.peakNetValue = peak;
+    this.maxDrawdownValue = dd;
+  }
+
   /** 当前债务总额（本金 + 利息，含杠杆融资） */
   get debt(): number {
     return this.loanPrincipal + this.leveragePrincipal + this.loanInterest;
@@ -305,6 +401,9 @@ export class TradingService {
     this.loanPrincipal = 0;
     this.leveragePrincipal = 0;
     this.loanInterest = 0;
+    this.records = [];
+    this.peakNetValue = 0;
+    this.maxDrawdownValue = 0;
   }
 
   /** 导出账户快照（持久化用） */
@@ -316,11 +415,14 @@ export class TradingService {
       loanPrincipal: this.loanPrincipal,
       leveragePrincipal: this.leveragePrincipal,
       loanInterest: this.loanInterest,
-      feeTotal: this.feeTotalValue
+      feeTotal: this.feeTotalValue,
+      records: this.records,
+      peak: this.peakNetValue,
+      maxDrawdown: this.maxDrawdownValue
     };
   }
 
-  /** 从快照恢复账户（继续上一局用） */
+  /** 从快照恢复账户（继续上一局用，兼容不含流水字段的旧存档） */
   restore(s: AccountSnapshot): void {
     this.account.cash = s.cash;
     this.account.shares = s.shares;
@@ -329,6 +431,9 @@ export class TradingService {
     this.leveragePrincipal = s.leveragePrincipal === undefined ? 0 : s.leveragePrincipal;
     this.loanInterest = s.loanInterest;
     this.feeTotalValue = s.feeTotal;
+    this.records = s.records === undefined ? [] : s.records;
+    this.peakNetValue = s.peak === undefined ? 0 : s.peak;
+    this.maxDrawdownValue = s.maxDrawdown === undefined ? 0 : s.maxDrawdown;
     this.todayBought = 0;
     this.lastDate = '';
   }

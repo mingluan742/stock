@@ -198,5 +198,69 @@ export default function tradingServiceTest() {
       // 价格跑到 40 时净资产为负
       expect(t.bankrupt(40)).assertTrue();
     });
+
+    it('买卖应写入交易流水并计算已实现盈亏', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0, 0, 0, false));
+      t.newDay('2026-01-05');
+      t.buy(100, 200, 0);          // 成本 20000
+      expect(t.tradeCount).assertEqual(1);
+      expect(t.tradeRecords[0].side).assertEqual('买');
+      expect(t.tradeRecords[0].date).assertEqual('2026-01-05');
+      expect(t.tradeRecords[0].realized).assertEqual(0);
+      t.newDay('2026-01-06');
+      t.sell(120, 100, 0);         // 卖 100 股 @120，相对均价 100 盈利 2000
+      expect(t.tradeCount).assertEqual(2);
+      expect(t.tradeRecords[1].side).assertEqual('卖');
+      expect(t.tradeRecords[1].realized).assertEqual(2000);
+    });
+
+    it('胜率应按盈利卖出笔数统计', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0, 0, 0, false));
+      t.buy(100, 200, 0);
+      t.sell(120, 100, 0);   // 盈利
+      t.sell(90, 100, 0);    // 亏损
+      expect(t.winRate).assertEqual(0.5);
+    });
+
+    it('应按净值峰值跟踪最大回撤', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0, 0, 0, false));
+      t.buy(100, 100, 0);
+      t.updateNetTracking(100);   // 峰值 100 万
+      expect(t.peakNet).assertEqual(AppConfig.INIT_CASH);
+      expect(t.maxDrawdown).assertEqual(0);
+      t.updateNetTracking(80);    // 净值 99.8 万，回撤 0.2%
+      expect(t.maxDrawdown).assertEqual(0.002);
+      t.updateNetTracking(100);   // 价格回来了，回撤保持峰值记录
+      expect(t.maxDrawdown).assertEqual(0.002);
+    });
+
+    it('快照应带上流水与回撤，恢复后一致', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0, 0, 0, false));
+      t.newDay('2026-01-05');
+      t.buy(100, 200, 0);
+      t.updateNetTracking(90);
+      const snap = t.snapshot();
+      const t2 = new TradingService();
+      t2.setRules(makeRules(0, 0, 0, false));
+      t2.restore(snap);
+      expect(t2.tradeCount).assertEqual(1);
+      expect(t2.shares).assertEqual(200);
+      expect(t2.maxDrawdown).assertEqual(t.maxDrawdown);
+    });
+
+    it('重置后应清空流水与回撤', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0, 0, 0, false));
+      t.buy(100, 200, 0);
+      t.updateNetTracking(50);
+      t.reset();
+      expect(t.tradeCount).assertEqual(0);
+      expect(t.maxDrawdown).assertEqual(0);
+      expect(t.cash).assertEqual(AppConfig.INIT_CASH);
+    });
   });
 }

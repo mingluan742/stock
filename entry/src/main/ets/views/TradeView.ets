@@ -30,6 +30,8 @@ export struct TradeView {
   @Prop resume: boolean = false;
   /** 返回上一级（由 App 页注入） */
   onBack: () => void = () => {};
+  /** 查看结算复盘（由 App 页注入） */
+  onFinish: () => void = () => {};
   @State scenarioName: string = '加载中…';
   @State eraText: string = '';
   @State priceText: string = '--';
@@ -128,6 +130,7 @@ export struct TradeView {
       this.eventList = [];
       this.appendEvents(market.eventsPassed());
       this.bankrupt = AppContext.getTrading().netAsset(this.currentPrice) <= 0;
+      AppContext.getTrading().updateNetTracking(this.currentPrice);
       this.syncMarketText();
       this.syncAccount();
       this.drawChart();
@@ -197,6 +200,7 @@ export struct TradeView {
       this.currentPrice = bar.price;
     }
     this.finished = false;
+    AppContext.getTrading().updateNetTracking(this.currentPrice);
     this.syncMarketText();
     this.syncAccount();
     this.drawChart();
@@ -256,6 +260,7 @@ export struct TradeView {
     }
     this.finished = false;
     this.paused = false;
+    AppContext.getTrading().updateNetTracking(this.currentPrice);
     this.eventList = [];
     this.appendEvents(market.eventsToday()); // 补出第 1 天事件
     this.syncMarketText();
@@ -279,6 +284,7 @@ export struct TradeView {
     this.prices.push(bar.price);
     const trading = AppContext.getTrading();
     trading.newDay(bar.date);
+    trading.updateNetTracking(bar.price);
     this.syncMarketText();
     this.syncAccount();
     this.drawChart();
@@ -953,6 +959,21 @@ export struct TradeView {
         .padding({ left: 20, right: 20, top: 10 })
 
         Blank()
+
+        // 结算入口：剧本播完或爆仓后可查看复盘
+        if (this.finished || this.bankrupt) {
+          Button('查看结算复盘')
+            .width('100%')
+            .height(40)
+            .fontSize(14)
+            .backgroundColor('#2A2F3A')
+            .fontColor(AppConfig.COLOR_ACCENT)
+            .margin({ left: 16, right: 16, bottom: 8 })
+            .onClick(() => {
+              this.stopPlay();
+              this.onFinish();
+            })
+        }
 
         // 操作区：播放控制 / 买入 / 卖出 / 资金
         Row({ space: 8 }) {

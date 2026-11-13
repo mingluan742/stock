@@ -2,13 +2,15 @@ import { AppConfig } from '../config/AppConfig';
 import { SaveService, SaveSnapshot } from '../core/SaveService';
 import { HistoryView } from '../views/HistoryView';
 import { HomeView } from '../views/HomeView';
+import { ResultView } from '../views/ResultView';
 import { TradeView } from '../views/TradeView';
 
 /**
- * 应用唯一入口页：用状态机切换三个视图
+ * 应用唯一入口页：用状态机切换四个视图
  * - home：主界面（历史剧本 / 随机模拟 / 继续上一局）
  * - history：历史剧本列表
  * - trade：实时盯盘
+ * - result：结算复盘
  * 不使用 router 页面路由，保证在预览器里也能正常点击切换
  */
 @Entry
@@ -61,13 +63,28 @@ struct App {
             this.view = 'trade';
           }
         })
-      } else {
+      } else if (this.view === 'trade') {
         TradeView({
           mode: this.tradeMode,
           scenarioId: this.tradeId,
           resume: this.resume,
           onBack: () => {
             this.view = this.tradeMode === 'random' ? 'home' : 'history';
+          },
+          onFinish: () => {
+            this.view = 'result';
+          }
+        })
+      } else {
+        ResultView({
+          mode: this.tradeMode,
+          scenarioId: this.tradeId,
+          onBack: () => {
+            this.view = this.tradeMode === 'random' ? 'home' : 'history';
+          },
+          onReplay: () => {
+            this.resume = false;
+            this.view = 'trade';
           }
         })
       }

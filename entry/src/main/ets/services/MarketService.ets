@@ -157,6 +157,18 @@ export class MarketService {
     return out;
   }
 
+  /** 已走过的日期序列（复盘页做买卖点定位用） */
+  historyDates(): string[] {
+    const out: string[] = [];
+    if (this.data === null) {
+      return out;
+    }
+    for (let i = 0; i <= this.cursor; i++) {
+      out.push(this.data.timeline[i].date);
+    }
+    return out;
+  }
+
   /** 已走过的所有历史事件（恢复事件列表用） */
   eventsPassed(): ScenarioEvent[] {
     const out: ScenarioEvent[] = [];

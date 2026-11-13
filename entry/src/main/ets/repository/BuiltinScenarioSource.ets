@@ -12,8 +12,16 @@ import { ScenarioData, ScenarioMeta } from '../models/Scenario';
  */
 export class BuiltinScenarioSource implements IMarketDataSource {
   private rm: resourceManager.ResourceManager;
-  /** 剧本清单：新增剧本时在这里登记 id 即可 */
-  private ids: string[] = ['crash-1929', 'a-share-2015'];
+  /** 剧本清单：按历史时间排序，新增剧本时在这里登记 id 即可 */
+  private ids: string[] = [
+    'crash-1929',
+    'crash-1987',
+    'dotcom-2000',
+    'crisis-2008',
+    'a-share-2015',
+    'circuit-2016',
+    'covid-2020'
+  ];
   /** 内存缓存，避免重复解析 JSON */
   private cache: Map<string, ScenarioData> = new Map<string, ScenarioData>();
 
