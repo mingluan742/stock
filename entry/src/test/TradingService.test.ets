@@ -23,7 +23,7 @@ export default function tradingServiceTest() {
       expect(r.ok).assertTrue();
       // 100 * 100 = 10000 元，手续费 10 元
       expect(t.cash).assertEqual(AppConfig.INIT_CASH - 10010);
-      expect(t.shares).assertEqual(100);
+      expect(t.shares()).assertEqual(100);
       expect(t.feeTotal).assertEqual(10);
     });
 
@@ -40,10 +40,10 @@ export default function tradingServiceTest() {
       t.setRules(makeRules(0, 0, 0, false));
       t.buy(100, 100, 0);   // 成本 10000
       t.buy(200, 100, 0);   // 成本 20000，均价 150
-      expect(t.avgCost).assertEqual(150);
+      expect(t.avgCost()).assertEqual(150);
       const r = t.sell(200, 100, 0);
       expect(r.ok).assertTrue();
-      expect(t.shares).assertEqual(100);
+      expect(t.shares()).assertEqual(100);
       expect(t.cash).assertEqual(AppConfig.INIT_CASH - 10000); // 卖出 100 股 @200 = 20000，成本扣 15000
     });
 
@@ -57,7 +57,7 @@ export default function tradingServiceTest() {
       expect(r.message).assertContain('T+1');
       // 换一天后可以卖
       t.newDay('2026-01-06');
-      expect(t.sellableShares).assertEqual(100);
+      expect(t.sellableShares()).assertEqual(100);
       const r2 = t.sell(100, 100, 0);
       expect(r2.ok).assertTrue();
     });
@@ -93,12 +93,12 @@ export default function tradingServiceTest() {
       t.setRules(makeRules(0, 0, 0, true));
       const r = t.sell(100, 100, 0); // 开空 100 股
       expect(r.ok).assertTrue();
-      expect(t.shares).assertEqual(-100);
-      expect(t.avgCost).assertEqual(100);
+      expect(t.shares()).assertEqual(-100);
+      expect(t.avgCost()).assertEqual(100);
       // 价格跌到 80 时买入平仓，应盈利 2000
       const r2 = t.buy(80, 100, 0);
       expect(r2.ok).assertTrue();
-      expect(t.shares).assertEqual(0);
+      expect(t.shares()).assertEqual(0);
       expect(t.cash - AppConfig.INIT_CASH).assertEqual(2000);
     });
 
@@ -111,7 +111,7 @@ export default function tradingServiceTest() {
       expect(r.message).assertContain('做空规模');
       const r2 = t.sell(100, 500000, 0);
       expect(r2.ok).assertTrue();
-      expect(t.shares).assertEqual(-500000);
+      expect(t.shares()).assertEqual(-500000);
     });
 
     it('借款应增加现金与负债，还款应冲减', 0, () => {
@@ -158,7 +158,7 @@ export default function tradingServiceTest() {
       // 5 倍杠杆买 1000 股 @100：市值 10 万，保证金 2 万
       const r = t.buy(100, 1000, 0, 5);
       expect(r.ok).assertTrue();
-      expect(t.shares).assertEqual(1000);
+      expect(t.shares()).assertEqual(1000);
       // 现金：100 万 - 保证金 2 万 = 98 万（融资 8 万计入负债）
       expect(t.cash).assertEqual(AppConfig.INIT_CASH - 20000);
       expect(t.debt).assertEqual(80000);
@@ -264,7 +264,7 @@ export default function tradingServiceTest() {
       t2.setRules(makeRules(0, 0, 0, false));
       t2.restore(snap);
       expect(t2.tradeCount).assertEqual(1);
-      expect(t2.shares).assertEqual(200);
+      expect(t2.shares()).assertEqual(200);
       expect(t2.maxDrawdown).assertEqual(t.maxDrawdown);
     });
 
@@ -301,6 +301,67 @@ export default function tradingServiceTest() {
       t.reset();
       expect(t.maxLeverageUsed).assertEqual(1);
       expect(t.totalBorrowed).assertEqual(0);
+    });
+
+    it('多标的：各股票独立记账，现金共用', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0, 0, 0, true));
+      t.enableMultiStock(['s1', 's2']);
+      const r1 = t.buy(100, 100, 0, 1, 's1');
+      const r2 = t.buy(50, 200, 0, 1, 's2');
+      expect(r1.ok).assertTrue();
+      expect(r2.ok).assertTrue();
+      expect(t.shares('s1')).assertEqual(100);
+      expect(t.shares('s2')).assertEqual(200);
+      expect(t.cash).assertEqual(AppConfig.INIT_CASH - 10000 - 10000);
+      expect(t.avgCost('s1')).assertEqual(100);
+      expect(t.avgCost('s2')).assertEqual(50);
+      t.sell(120, 100, 0, 's1');
+      expect(t.shares('s1')).assertEqual(0);
+      expect(t.shares('s2')).assertEqual(200);
+      expect(t.tradeCount).assertEqual(3);
+    });
+
+    it('多标的：净资产合并计算多只股票市值', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0, 0, 0, true));
+      t.enableMultiStock(['a', 'b']);
+      t.buy(100, 100, 0, 1, 'a');
+      t.buy(40, 100, 0, 1, 'b');
+      const prices: Record<string, number> = {};
+      prices['a'] = 200;
+      prices['b'] = 50;
+      t.setValuationPrices(prices);
+      expect(t.netAsset(0)).assertEqual(AppConfig.INIT_CASH - 10000 - 4000 + 20000 + 5000);
+    });
+
+    it('多标的：快照与恢复保留各股票持仓', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0, 0, 0, true));
+      t.enableMultiStock(['x', 'y']);
+      t.buy(100, 100, 0, 1, 'x');
+      t.buy(60, 300, 0, 1, 'y');
+      const snap = t.snapshot();
+      const t2 = new TradingService();
+      t2.setRules(makeRules(0, 0, 0, true));
+      t2.restore(snap);
+      expect(t2.shares('x')).assertEqual(100);
+      expect(t2.shares('y')).assertEqual(300);
+      expect(t2.avgCost('x')).assertEqual(100);
+      expect(t2.avgCost('y')).assertEqual(60);
+      expect(t2.cash).assertEqual(t.cash);
+    });
+
+    it('多标的：T+1 按股票独立冻结', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0.1, 1, 0, true));
+      t.enableMultiStock(['m', 'n']);
+      t.newDay('2026-01-05');
+      t.buy(100, 100, 0, 1, 'm');
+      expect(t.sellableShares('m')).assertEqual(0);
+      expect(t.sellableShares('n')).assertEqual(0);
+      t.newDay('2026-01-06');
+      expect(t.sellableShares('m')).assertEqual(100);
     });
   });
 }

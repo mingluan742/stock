@@ -5,7 +5,7 @@ import { SaveService, SaveSnapshot } from '../core/SaveService';
 import { Account } from '../models/Account';
 import { AchievementContext, AchievementDef } from '../models/Achievement';
 import { KLine } from '../models/KLine';
-import { ScenarioData } from '../models/Scenario';
+import { ScenarioData, StockSpec } from '../models/Scenario';
 import { ScenarioEvent } from '../models/ScenarioEvent';
 
 /** 图表最多同时显示的样本数（超出后向左滚动） */
@@ -34,6 +34,9 @@ export struct TradeView {
   /** 查看结算复盘（由 App 页注入） */
   onFinish: () => void = () => {};
   @State scenarioName: string = '加载中…';
+  /** 多标的：股票清单与选中 id（随机盘） */
+  @State stockTabs: StockSpec[] = [];
+  @State activeStockId: string = '';
   @State eraText: string = '';
   @State priceText: string = '--';
   @State changeText: string = '';
@@ -139,6 +142,11 @@ export struct TradeView {
       }
       this.eventList = [];
       this.appendEvents(market.eventsPassed());
+      this.stockTabs = market.stocks;
+      if (market.stocks.length > 0) {
+        this.activeStockId = market.activeStock === null ? market.stocks[0].id : market.activeStock.id;
+      }
+      this.syncValuationPrices();
       this.bankrupt = AppContext.getTrading().netAsset(this.currentPrice) <= 0;
       AppContext.getTrading().updateNetTracking(this.currentPrice);
       this.syncMarketText();
@@ -172,7 +180,7 @@ export struct TradeView {
   /** 生成并载入一局随机行情 */
   loadRandom(): void {
     try {
-      const data: ScenarioData = AppContext.getRandom().generate();
+      const data: ScenarioData = AppContext.getRandom().generateMulti();
       AppContext.getMarket().loadData(data);
       this.applyLoaded();
     } catch (err) {
@@ -190,6 +198,20 @@ export struct TradeView {
       AppContext.getTrading().setRules(rules);
     } else {
       AppContext.getTrading().reset();
+    }
+    // 多标的：注册独立记账并选中第一只
+    const stocks: StockSpec[] = market.stocks;
+    this.stockTabs = stocks;
+    if (stocks.length > 0) {
+      const ids: string[] = [];
+      for (const st of stocks) {
+        ids.push(st.id);
+      }
+      AppContext.getTrading().enableMultiStock(ids);
+      this.activeStockId = stocks[0].id;
+      market.selectStock(stocks[0].id);
+    } else {
+      this.activeStockId = '';
     }
     this.bankrupt = false;
     this.roundCounted = false;
@@ -211,6 +233,7 @@ export struct TradeView {
       this.currentPrice = bar.price;
     }
     this.finished = false;
+    this.syncValuationPrices();
     AppContext.getTrading().updateNetTracking(this.currentPrice);
     this.syncMarketText();
     this.syncAccount();
@@ -272,6 +295,10 @@ export struct TradeView {
     this.finished = false;
     this.paused = false;
     this.roundCounted = false;
+    if (this.mode === 'random' && this.stockTabs.length > 0) {
+      this.activeStockId = this.stockTabs[0].id;
+      AppContext.getMarket().selectStock(this.activeStockId);
+    }
     AppContext.getTrading().updateNetTracking(this.currentPrice);
     this.eventList = [];
     this.appendEvents(market.eventsToday()); // 补出第 1 天事件
@@ -297,6 +324,7 @@ export struct TradeView {
     this.prices.push(bar.price);
     const trading = AppContext.getTrading();
     trading.newDay(bar.date);
+    this.syncValuationPrices();
     trading.updateNetTracking(bar.price);
     this.syncMarketText();
     this.syncAccount();
@@ -343,7 +371,7 @@ export struct TradeView {
       bankrupt: this.bankrupt,
       netAsset: trading.netAsset(price),
       price: price,
-      shares: trading.shares,
+      shares: trading.shares(this.stockId()),
       maxDrawdown: trading.maxDrawdown,
       tradeCount: trading.tradeCount,
       buyCount: trading.buyCount,
@@ -408,17 +436,20 @@ export struct TradeView {
 
   syncAccount(): void {
     const t = AppContext.getTrading();
+    const sid: string | null = this.stockId();
+    const shares: number = t.shares(sid);
     this.cashText = this.formatMoney(t.cash);
-    if (t.shares > 0) {
-      this.sharesText = `多 ${t.shares} 股`;
-    } else if (t.shares < 0) {
-      this.sharesText = `空 ${-t.shares} 股`;
+    if (shares > 0) {
+      this.sharesText = `多 ${shares} 股`;
+    } else if (shares < 0) {
+      this.sharesText = `空 ${-shares} 股`;
     } else {
       this.sharesText = '0 股';
     }
-    if (t.shares !== 0) {
-      this.avgCostText = t.shares > 0 ? `成本 ${t.avgCost.toFixed(2)}` : `卖空均价 ${t.avgCost.toFixed(2)}`;
-      const pnl: number = t.pnl(this.currentPrice);
+    if (shares !== 0) {
+      const avg: number = t.avgCost(sid);
+      this.avgCostText = shares > 0 ? `成本 ${avg.toFixed(2)}` : `卖空均价 ${avg.toFixed(2)}`;
+      const pnl: number = t.pnl(this.currentPrice, sid);
       this.pnlUp = pnl >= 0;
       this.pnlText = `${pnl >= 0 ? '+' : '-'}${this.formatMoney(Math.abs(pnl))}`;
     } else {
@@ -431,7 +462,7 @@ export struct TradeView {
     this.debtText = this.formatMoney(t.debt);
     this.feeText = this.formatMoney(t.feeTotal);
     this.loanAvailText = this.formatMoney(t.loanAvailable);
-    this.sellableText = `${t.sellableShares} 股`;
+    this.sellableText = `${t.sellableShares(sid)} 股`;
     this.debtPrincipalText = this.formatMoney(t.debtPrincipal);
     this.debtInterestText = this.formatMoney(t.debtInterest);
     this.dailyInterestText = this.formatMoney(t.dailyInterest);
@@ -447,6 +478,45 @@ export struct TradeView {
       rest = rest.substring(0, rest.length - 3);
     }
     return rest + out;
+  }
+
+  /** 多标的辅助：当前股票 id（单标的模式返回 null） */
+  stockId(): string | null {
+    return this.stockTabs.length > 0 ? this.activeStockId : null;
+  }
+
+  /** 行情推进后刷新所有股票的估值价（多标的） */
+  syncValuationPrices(): void {
+    if (this.stockTabs.length === 0) {
+      return;
+    }
+    const market = AppContext.getMarket();
+    const map: Record<string, number> = {};
+    for (const st of this.stockTabs) {
+      const bar: KLine | null = market.barAt(st.id, market.dayIndex);
+      if (bar !== null) {
+        map[st.id] = bar.price;
+      }
+    }
+    AppContext.getTrading().setValuationPrices(map);
+  }
+
+  /** 切换选中股票 */
+  pickStock(id: string): void {
+    if (this.activeStockId === id) {
+      return;
+    }
+    this.activeStockId = id;
+    AppContext.getMarket().selectStock(id);
+    // 重画当前股票的曲线与账户栏
+    this.prices = AppContext.getMarket().historyPrices();
+    const bar: KLine | null = AppContext.getMarket().currentBar;
+    if (bar !== null) {
+      this.currentPrice = bar.price;
+    }
+    this.syncMarketText();
+    this.syncAccount();
+    this.drawChart();
   }
 
   /** 统一 Toast，内部捕获异常，使用组件上下文推荐写法 */
@@ -515,9 +585,11 @@ export struct TradeView {
   /** 买入方向的数量：空头时只平空，不反手 */
   previewBuyQty(): number {
     const t = AppContext.getTrading();
+    const sid: string | null = this.stockId();
+    const shares: number = t.shares(sid);
     const qty: number = this.previewQty();
-    if (t.shares < 0) {
-      const cover: number = -t.shares;
+    if (shares < 0) {
+      const cover: number = -shares;
       return qty > cover ? cover : qty;
     }
     return qty;
@@ -526,13 +598,15 @@ export struct TradeView {
   /** 卖出方向的数量：多头时只平多（受 T+1 限制），空头时加空，无持仓时开空 */
   previewSellQty(): number {
     const t = AppContext.getTrading();
+    const sid: string | null = this.stockId();
+    const shares: number = t.shares(sid);
     const qty: number = this.previewQty();
-    if (t.shares > 0) {
-      const sellable: number = t.sellableShares;
+    if (shares > 0) {
+      const sellable: number = t.sellableShares(sid);
       return qty > sellable ? sellable : qty;
     }
     const rules = AppContext.getMarket().rules;
-    if (t.shares === 0 && rules !== null && !rules.shortSell) {
+    if (shares === 0 && rules !== null && !rules.shortSell) {
       return 0;
     }
     return qty;
@@ -556,10 +630,11 @@ export struct TradeView {
 
     const buyQty: number = this.previewBuyQty();
     const sellQty: number = this.previewSellQty();
-    if (t.shares > 0) {
+    const shares: number = t.shares(this.stockId());
+    if (shares > 0) {
       this.buyBtnText = buyQty > 0 ? `加多 ${buyQty} 股` : '加多';
       this.sellBtnText = sellQty > 0 ? `平多 ${sellQty} 股` : '平多';
-    } else if (t.shares < 0) {
+    } else if (shares < 0) {
       this.buyBtnText = buyQty > 0 ? `平空 ${buyQty} 股` : '平空';
       if (!this.canShort()) {
         this.sellBtnText = '做空不可用';
@@ -594,8 +669,8 @@ export struct TradeView {
       return;
     }
     const t = AppContext.getTrading();
-    const before: number = t.shares;
-    const r: Result<Account> = t.buy(this.currentPrice, qty, this.lastRatio, this.leverage);
+    const before: number = t.shares(this.stockId());
+    const r: Result<Account> = t.buy(this.currentPrice, qty, this.lastRatio, this.leverage, this.stockId());
     if (r.ok) {
       this.tradeTip = '';
       this.showTip(before < 0 ? `平空 ${qty} 股成交` : `买入 ${qty} 股成交`);
@@ -612,7 +687,7 @@ export struct TradeView {
     const t = AppContext.getTrading();
     const qty: number = this.previewSellQty();
     if (qty <= 0) {
-      if (t.shares > 0) {
+      if (t.shares(this.stockId()) > 0) {
         this.tradeTip = '可卖持仓为 0（T+1 或已全部卖出）';
       } else if (!this.canShort()) {
         this.tradeTip = '本市场不支持做空';
@@ -621,12 +696,12 @@ export struct TradeView {
       }
       return;
     }
-    if (t.shares <= 0 && !this.canShort()) {
+    if (t.shares(this.stockId()) <= 0 && !this.canShort()) {
       this.tradeTip = '本市场不支持做空';
       return;
     }
-    const before: number = t.shares;
-    const r: Result<Account> = t.sell(this.currentPrice, qty, this.lastRatio);
+    const before: number = t.shares(this.stockId());
+    const r: Result<Account> = t.sell(this.currentPrice, qty, this.lastRatio, this.stockId());
     if (r.ok) {
       this.tradeTip = '';
       this.showTip(before <= 0 ? `做空 ${qty} 股成交` : `卖出 ${qty} 股成交`);
@@ -641,13 +716,15 @@ export struct TradeView {
   /** 一键平仓：多头全卖，空头全买回 */
   closeAll(): void {
     const t = AppContext.getTrading();
-    if (t.shares === 0) {
-      this.tradeTip = '当前没有持仓';
+    const sid: string | null = this.stockId();
+    const shares: number = t.shares(sid);
+    if (shares === 0) {
+      this.tradeTip = this.stockTabs.length > 0 ? '当前股票没有持仓' : '当前没有持仓';
       return;
     }
-    const r: Result<Account> = t.shares > 0
-      ? t.sell(this.currentPrice, t.sellableShares, this.lastRatio)
-      : t.buy(this.currentPrice, -t.shares, this.lastRatio, 1);
+    const r: Result<Account> = shares > 0
+      ? t.sell(this.currentPrice, t.sellableShares(sid), this.lastRatio, sid)
+      : t.buy(this.currentPrice, -shares, this.lastRatio, 1, sid);
     if (r.ok) {
       this.tradeTip = '';
       this.showTip('已一键平仓');
@@ -948,6 +1025,37 @@ export struct TradeView {
         }
         .width('100%')
         .padding({ left: 16, right: 16, top: 14 })
+
+        // 多标的：股票切换条（随机盘显示）
+        if (this.stockTabs.length > 0) {
+          Scroll() {
+            Row({ space: 8 }) {
+              ForEach(this.stockTabs, (st: StockSpec) => {
+                Column() {
+                  Text(st.name)
+                    .fontSize(12)
+                    .fontWeight(this.activeStockId === st.id ? FontWeight.Bold : FontWeight.Normal)
+                    .fontColor(this.activeStockId === st.id ? '#12141A' : '#B8BDC7')
+                  Text(st.code)
+                    .fontSize(8)
+                    .fontColor(this.activeStockId === st.id ? '#12141A' : '#6B717C')
+                    .margin({ top: 1 })
+                }
+                .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+                .backgroundColor(this.activeStockId === st.id ? AppConfig.COLOR_ACCENT : '#22262F')
+                .borderRadius(9)
+                .onClick(() => {
+                  this.pickStock(st.id);
+                })
+              }, (st: StockSpec) => st.id)
+            }
+            .padding({ left: 16, right: 16 })
+          }
+          .scrollable(ScrollDirection.Horizontal)
+          .scrollBar(BarState.Off)
+          .width('100%')
+          .margin({ top: 10 })
+        }
 
         // 价格区
         Row() {

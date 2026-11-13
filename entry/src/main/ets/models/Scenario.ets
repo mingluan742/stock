@@ -39,4 +39,18 @@ export interface ScenarioData {
   rules: MarketRuleConfig;
   timeline: KLine[];
   events: ScenarioEvent[];
+  /** 多标的模式：随机盘一次生成多只股票，各自独立走势；历史剧本为空 */
+  stocks?: StockSpec[];
+}
+
+/**
+ * 多标的模式下的单只股票：
+ * timeline 独立生成，事件可挂到某只股票（stockId 为空则为全市场事件）
+ */
+export interface StockSpec {
+  id: string;
+  code: string;
+  name: string;
+  timeline: KLine[];
+  events: ScenarioEvent[];
 }
