@@ -1,6 +1,7 @@
 import { AppConfig } from '../config/AppConfig';
 import { AppContext } from '../core/AppContext';
 import { Result } from '../core/Result';
+import { SaveService, SaveSnapshot } from '../core/SaveService';
 import { Account } from '../models/Account';
 import { KLine } from '../models/KLine';
 import { ScenarioData } from '../models/Scenario';
@@ -25,6 +26,8 @@ export struct TradeView {
   @Prop mode: string = 'history';
   /** 历史剧本 id */
   @Prop scenarioId: string = AppConfig.DEFAULT_SCENARIO;
+  /** 是否从存档继续 */
+  @Prop resume: boolean = false;
   /** 返回上一级（由 App 页注入） */
   onBack: () => void = () => {};
   @State scenarioName: string = '加载中…';
@@ -57,6 +60,8 @@ export struct TradeView {
   @State tradeQtyText: string = '100';
   @State tradeTip: string = '';
   @State tradeSummary: string = '';
+  /** 买入杠杆倍数 */
+  @State leverage: number = 1;
 
   // 贷款面板
   @State showLoan: boolean = false;
@@ -73,13 +78,16 @@ export struct TradeView {
   private settings: RenderingContextSettings = new RenderingContextSettings(true);
   private ctx: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
   private eventScroller: Scroller = new Scroller();
+  private tickCount: number = 0;
 
   aboutToAppear(): void {
     const host = this.getUIContext().getHostContext();
     if (host !== undefined) {
       AppContext.init(host.resourceManager);
     }
-    if (this.mode === 'random') {
+    if (this.resume) {
+      this.loadScenarioResume(this.scenarioId);
+    } else if (this.mode === 'random') {
       this.loadRandom();
     } else {
       this.loadScenario(this.scenarioId);
@@ -98,6 +106,54 @@ export struct TradeView {
       const e = err as Error;
       this.scenarioName = `加载失败：${e.message}`;
     }
+  }
+
+  /** 从存档恢复：加载剧本后回拨游标、账户与曲线 */
+  async loadScenarioResume(id: string): Promise<void> {
+    try {
+      await AppContext.getMarket().load(id);
+      this.applyLoaded();
+      const snap: SaveSnapshot | null = SaveService.load();
+      if (snap === null || snap.scenarioId !== id) {
+        return;
+      }
+      const market = AppContext.getMarket();
+      market.setCursor(snap.cursor);
+      AppContext.getTrading().restore(snap.account);
+      this.prices = market.historyPrices();
+      const bar: KLine | null = market.currentBar;
+      if (bar !== null) {
+        this.currentPrice = bar.price;
+      }
+      this.eventList = [];
+      this.appendEvents(market.eventsPassed());
+      this.bankrupt = AppContext.getTrading().netAsset(this.currentPrice) <= 0;
+      this.syncMarketText();
+      this.syncAccount();
+      this.drawChart();
+    } catch (err) {
+      const e = err as Error;
+      this.scenarioName = `恢复失败：${e.message}`;
+    }
+  }
+
+  /** 保存当前对局快照（仅历史剧本，且未结束） */
+  saveSnapshot(): void {
+    if (this.mode !== 'history' || this.finished || this.bankrupt) {
+      return;
+    }
+    const market = AppContext.getMarket();
+    const meta = market.meta;
+    const snap: SaveSnapshot = {
+      mode: 'history',
+      scenarioId: this.scenarioId,
+      scenarioName: meta === null ? '' : meta.name,
+      cursor: market.dayIndex,
+      totalDays: market.totalDays,
+      account: AppContext.getTrading().snapshot(),
+      savedAt: new Date().toISOString()
+    };
+    SaveService.save(snap);
   }
 
   /** 生成并载入一局随机行情 */
@@ -231,15 +287,22 @@ export struct TradeView {
       this.paused = true;
       this.progressText = '已爆仓';
       this.showTip('净资产归零，已爆仓');
+      SaveService.clear();
     }
     if (market.finished) {
       this.finished = true;
       this.stopPlay();
       this.progressText = '剧本终结';
+      SaveService.clear();
     }
     if (events.length > 0) {
       // 不打断行情：事件累积到历史现场列表，可滑动回看
       this.appendEvents(events);
+    }
+    // 每 5 个交易日存一次档，防止异常退出丢进度
+    this.tickCount += 1;
+    if (this.tickCount % 5 === 0) {
+      this.saveSnapshot();
     }
   }
 
@@ -334,12 +397,24 @@ export struct TradeView {
     return rules.feeRate;
   }
 
-  /** 交易面板实时费用预览 */
+  /** 交易面板实时费用预览（含杠杆保证金与融资） */
   updateTradeSummary(): void {
     const qty: number = this.parseQty();
     const amount: number = this.currentPrice * qty;
     const fee: number = amount * this.currentFeeRate();
-    this.tradeSummary = `金额 ${this.formatMoney(amount)} · 手续费 ${fee.toFixed(2)}`;
+    if (this.tradeSide === 0 && this.leverage > 1) {
+      const margin: number = amount / this.leverage;
+      const borrow: number = Math.max(0, amount + fee - AppContext.getTrading().cash);
+      this.tradeSummary = `金额 ${this.formatMoney(amount)} · 保证金 ${this.formatMoney(margin)} · 融资 ${this.formatMoney(borrow)}`;
+    } else {
+      this.tradeSummary = `金额 ${this.formatMoney(amount)} · 手续费 ${fee.toFixed(2)}`;
+    }
+  }
+
+  /** 切换杠杆倍数 */
+  setLeverage(v: number): void {
+    this.leverage = v;
+    this.updateTradeSummary();
   }
 
   fillQty(qty: number): void {
@@ -364,12 +439,13 @@ export struct TradeView {
     }
     const t = AppContext.getTrading();
     const r: Result<Account> = this.tradeSide === 0
-      ? t.buy(this.currentPrice, qty, this.lastRatio)
+      ? t.buy(this.currentPrice, qty, this.lastRatio, this.leverage)
       : t.sell(this.currentPrice, qty, this.lastRatio);
     if (r.ok) {
       this.showTrade = false;
       this.showTip(this.tradeSide === 0 ? `买入 ${qty} 股成交` : `卖出 ${qty} 股成交`);
       this.syncAccount();
+      this.saveSnapshot();
     } else {
       this.tradeTip = r.message;
     }
@@ -410,6 +486,7 @@ export struct TradeView {
       this.showLoan = false;
       this.showTip(`已借入 ${this.formatMoney(amount)} 元`);
       this.syncAccount();
+      this.saveSnapshot();
     } else {
       this.loanTip = r.message;
     }
@@ -426,6 +503,7 @@ export struct TradeView {
       this.showLoan = false;
       this.showTip(`已还款 ${this.formatMoney(amount)} 元`);
       this.syncAccount();
+      this.saveSnapshot();
     } else {
       this.loanTip = r.message;
     }
@@ -1010,6 +1088,54 @@ export struct TradeView {
             }
             .width('100%')
             .margin({ top: 10 })
+
+            // 杠杆档位（仅买入时显示）
+            if (this.tradeSide === 0) {
+              Row({ space: 8 }) {
+                Text('杠杆')
+                  .fontSize(11)
+                  .fontColor(AppConfig.COLOR_SUB)
+                  .width(28)
+                Button('1x')
+                  .layoutWeight(1)
+                  .height(32)
+                  .fontSize(12)
+                  .backgroundColor(this.leverage === 1 ? AppConfig.COLOR_ACCENT : '#262B35')
+                  .fontColor(this.leverage === 1 ? '#12141A' : '#B8BDC7')
+                  .onClick(() => {
+                    this.setLeverage(1);
+                  })
+                Button('2x')
+                  .layoutWeight(1)
+                  .height(32)
+                  .fontSize(12)
+                  .backgroundColor(this.leverage === 2 ? AppConfig.COLOR_ACCENT : '#262B35')
+                  .fontColor(this.leverage === 2 ? '#12141A' : '#B8BDC7')
+                  .onClick(() => {
+                    this.setLeverage(2);
+                  })
+                Button('3x')
+                  .layoutWeight(1)
+                  .height(32)
+                  .fontSize(12)
+                  .backgroundColor(this.leverage === 3 ? AppConfig.COLOR_ACCENT : '#262B35')
+                  .fontColor(this.leverage === 3 ? '#12141A' : '#B8BDC7')
+                  .onClick(() => {
+                    this.setLeverage(3);
+                  })
+                Button('5x')
+                  .layoutWeight(1)
+                  .height(32)
+                  .fontSize(12)
+                  .backgroundColor(this.leverage === 5 ? AppConfig.COLOR_ACCENT : '#262B35')
+                  .fontColor(this.leverage === 5 ? '#12141A' : '#B8BDC7')
+                  .onClick(() => {
+                    this.setLeverage(5);
+                  })
+              }
+              .width('100%')
+              .margin({ top: 10 })
+            }
 
             Text(this.tradeSummary)
               .fontSize(11)

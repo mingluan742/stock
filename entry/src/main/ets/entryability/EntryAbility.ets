@@ -14,6 +14,12 @@ export default class EntryAbility extends UIAbility {
     }
     // 装配全局服务（数据源 → 服务），后续页面直接从 AppContext 取
     AppContext.init(this.context.resourceManager);
+    // 绑定存档键到磁盘：AppStorage 中的变更会自动持久化
+    try {
+      PersistentStorage.persistProp('stock_snapshot', '');
+    } catch (err) {
+      hilog.error(DOMAIN, 'testTag', 'Failed to persist prop. Cause: %{public}s', JSON.stringify(err));
+    }
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
   }
 

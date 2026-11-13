@@ -128,4 +128,50 @@ export class MarketService {
   restart(): void {
     this.cursor = 0;
   }
+
+  /** 将时间轴游标移到指定位置（恢复快照用） */
+  setCursor(n: number): void {
+    if (this.data === null) {
+      return;
+    }
+    const max: number = this.data.timeline.length - 1;
+    let v: number = n;
+    if (v < 0) {
+      v = 0;
+    }
+    if (v > max) {
+      v = max;
+    }
+    this.cursor = v;
+  }
+
+  /** 已走过的收盘价序列（恢复曲线用） */
+  historyPrices(): number[] {
+    const out: number[] = [];
+    if (this.data === null) {
+      return out;
+    }
+    for (let i = 0; i <= this.cursor; i++) {
+      out.push(this.data.timeline[i].price);
+    }
+    return out;
+  }
+
+  /** 已走过的所有历史事件（恢复事件列表用） */
+  eventsPassed(): ScenarioEvent[] {
+    const out: ScenarioEvent[] = [];
+    if (this.data === null) {
+      return out;
+    }
+    const passedDates: Set<string> = new Set<string>();
+    for (let i = 0; i <= this.cursor; i++) {
+      passedDates.add(this.data.timeline[i].date);
+    }
+    for (const e of this.data.events) {
+      if (passedDates.has(e.date)) {
+        out.push(e);
+      }
+    }
+    return out;
+  }
 }

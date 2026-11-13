@@ -1,8 +1,9 @@
 import { AppConfig } from '../config/AppConfig';
 import { AppContext } from '../core/AppContext';
+import { SaveService, SaveSnapshot } from '../core/SaveService';
 
 /**
- * 主界面（明亮主题）：只保留两个入口
+ * 主界面（明亮主题）：两个入口 + 可选的“继续上一局”
  * - 历史剧本 → 剧本列表页（History）
  * - 随机模拟 → 直接生成一局陌生行情
  */
@@ -12,12 +13,31 @@ export struct HomeView {
   onGoHistory: () => void = () => {};
   /** 进入随机模拟 */
   onGoRandom: () => void = () => {};
+  /** 继续未完成的存档 */
+  onResume: () => void = () => {};
+
+  @State hasResume: boolean = false;
+  @State resumeTitle: string = '';
+  @State resumeInfo: string = '';
 
   aboutToAppear(): void {
     const host = this.getUIContext().getHostContext();
     if (host !== undefined) {
       AppContext.init(host.resourceManager);
     }
+    this.loadResumeInfo();
+  }
+
+  /** 读取存档摘要（主界面每次重新显示都会刷新） */
+  loadResumeInfo(): void {
+    const snap: SaveSnapshot | null = SaveService.load();
+    if (snap === null || snap.cursor >= snap.totalDays - 1) {
+      this.hasResume = false;
+      return;
+    }
+    this.hasResume = true;
+    this.resumeTitle = snap.scenarioName;
+    this.resumeInfo = `第 ${snap.cursor + 1} / ${snap.totalDays} 交易日`;
   }
 
   goHistory(): void {
@@ -26,6 +46,10 @@ export struct HomeView {
 
   goRandom(): void {
     this.onGoRandom();
+  }
+
+  resumeGame(): void {
+    this.onResume();
   }
 
   build() {
@@ -44,6 +68,38 @@ export struct HomeView {
       .width('100%')
       .alignItems(HorizontalAlign.Start)
       .margin({ top: 64 })
+
+      // 继续上一局（存在未完成存档时显示）
+      if (this.hasResume) {
+        Column() {
+          Row() {
+            Column() {
+              Text('继续上一局')
+                .fontSize(13)
+                .fontColor(AppConfig.LIGHT_ACCENT)
+              Text(`${this.resumeTitle} · ${this.resumeInfo}`)
+                .fontSize(11)
+                .fontColor(AppConfig.LIGHT_SUB)
+                .margin({ top: 4 })
+            }
+            .alignItems(HorizontalAlign.Start)
+            .layoutWeight(1)
+            Text('›')
+              .fontSize(20)
+              .fontColor('#D4B87A')
+          }
+          .width('100%')
+        }
+        .width('100%')
+        .padding(14)
+        .margin({ top: 24 })
+        .backgroundColor('#FFFBF2')
+        .borderRadius(12)
+        .border({ width: 1, color: '#F3E7CC' })
+        .onClick(() => {
+          this.resumeGame();
+        })
+      }
 
       Blank()
 

@@ -3,6 +3,16 @@ import { Result } from '../core/Result';
 import { Account } from '../models/Account';
 import { MarketRuleConfig } from '../models/Scenario';
 
+/** 账户快照（持久化 / 恢复用） */
+export interface AccountSnapshot {
+  cash: number;
+  shares: number;
+  cost: number;
+  loanPrincipal: number;
+  loanInterest: number;
+  feeTotal: number;
+}
+
 /** 做空上限（股），避免无限做空破坏体验 */
 const MAX_SHORT: number = 500;
 /** 涨跌停判定容差：达到限制的 95% 视为封板 */
@@ -84,8 +94,11 @@ export class TradingService {
     return Result.success(this.account);
   }
 
-  /** 买入：现金足够才成交，涨停封板不可买 */
-  buy(price: number, qty: number, dayRatio: number): Result<Account> {
+  /**
+   * 买入：涨停封板不可买
+   * leverage > 1 时按保证金交易，不足部分自动融资（计入负债）
+   */
+  buy(price: number, qty: number, dayRatio: number, leverage: number = 1): Result<Account> {
     if (price <= 0) {
       return Result.fail<Account>('行情未就绪');
     }
@@ -97,8 +110,23 @@ export class TradingService {
     }
     const amount: number = price * qty;
     const fee: number = amount * this.rules.feeRate;
-    if (this.account.cash < amount + fee) {
-      return Result.fail<Account>('现金不足（含手续费）');
+
+    if (leverage <= 1) {
+      if (this.account.cash < amount + fee) {
+        return Result.fail<Account>('现金不足（含手续费）');
+      }
+    } else {
+      // 杠杆：按倍数强制配资，自有资金只承担保证金
+      const margin: number = amount / leverage;
+      if (this.account.cash < margin + fee) {
+        return Result.fail<Account>(`保证金不足，需 ${Math.round(margin + fee)}`);
+      }
+      const borrowAmt: number = amount - margin;
+      if (borrowAmt > this.loanAvailable) {
+        return Result.fail<Account>('融资额度不足');
+      }
+      this.account.cash += borrowAmt;
+      this.loanPrincipal += borrowAmt;
     }
 
     // 若当前是空头，先按均价平空，剩余部分转为多头
@@ -256,5 +284,29 @@ export class TradingService {
     this.feeTotalValue = 0;
     this.loanPrincipal = 0;
     this.loanInterest = 0;
+  }
+
+  /** 导出账户快照（持久化用） */
+  snapshot(): AccountSnapshot {
+    return {
+      cash: this.account.cash,
+      shares: this.account.shares,
+      cost: this.account.cost,
+      loanPrincipal: this.loanPrincipal,
+      loanInterest: this.loanInterest,
+      feeTotal: this.feeTotalValue
+    };
+  }
+
+  /** 从快照恢复账户（继续上一局用） */
+  restore(s: AccountSnapshot): void {
+    this.account.cash = s.cash;
+    this.account.shares = s.shares;
+    this.account.cost = s.cost;
+    this.loanPrincipal = s.loanPrincipal;
+    this.loanInterest = s.loanInterest;
+    this.feeTotalValue = s.feeTotal;
+    this.todayBought = 0;
+    this.lastDate = '';
   }
 }
