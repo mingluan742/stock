@@ -47,6 +47,7 @@ export struct ResultView {
   @State winRateText: string = '--';
   @State feeText: string = '0';
   @State debtText: string = '0';
+  @State interestText: string = '0';
   @State benchText: string = '';
   @State verdictText: string = '';
   @State flows: FlowItem[] = [];
@@ -103,7 +104,7 @@ export struct ResultView {
     this.winRateText = trading.tradeCount === 0 ? '--' : `${(trading.winRate * 100).toFixed(0)}%`;
     this.feeText = this.formatMoney(trading.feeTotal);
     this.debtText = this.formatMoney(trading.debt);
-
+    this.interestText = this.formatMoney(trading.debtInterest);
     // 同期标的涨跌：对照"什么都不做"的结果
     let bench: number = 0;
     if (this.prices.length >= 2 && this.prices[0] > 0) {
@@ -424,6 +425,13 @@ export struct ResultView {
           Row({ space: 10 }) {
             this.metricCard('胜率', this.winRateText)
             this.metricCard('手续费', this.feeText)
+          }
+          .width('100%')
+          .margin({ top: 10 })
+
+          Row({ space: 10 }) {
+            this.metricCard('累计利息', this.interestText)
+            this.metricCard('期末负债', this.debtText)
           }
           .width('100%')
           .margin({ top: 10 })

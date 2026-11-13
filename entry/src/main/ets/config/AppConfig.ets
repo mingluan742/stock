@@ -15,8 +15,10 @@ export class AppConfig {
   static readonly MAX_LEVERAGE: number = 50;
   /** 总债务上限（含杠杆融资） */
   static readonly MAX_DEBT: number = 50000000;
+  /** 贷款年化利率 */
+  static readonly ANNUAL_LOAN_RATE: number = 0.08;
   /** 贷款日利率：年化 8%，按每学期 250 个交易日折算 */
-  static readonly DAILY_LOAN_RATE: number = 0.08 / 250;
+  static readonly DAILY_LOAN_RATE: number = AppConfig.ANNUAL_LOAN_RATE / 250;
 
   /** 涨（中国配色：红涨） */
   static readonly COLOR_UP: string = '#E64545';

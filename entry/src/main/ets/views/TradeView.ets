@@ -72,6 +72,11 @@ export struct TradeView {
   @State showLoan: boolean = false;
   @State loanAmountText: string = '100000';
   @State loanTip: string = '';
+  // 利息明细
+  @State debtPrincipalText: string = '0';
+  @State debtInterestText: string = '0';
+  @State dailyInterestText: string = '0';
+  @State loanPreviewText: string = '';
 
   @State eventList: ScenarioEvent[] = [];
   @State introText: string = '';
@@ -427,6 +432,9 @@ export struct TradeView {
     this.feeText = this.formatMoney(t.feeTotal);
     this.loanAvailText = this.formatMoney(t.loanAvailable);
     this.sellableText = `${t.sellableShares} 股`;
+    this.debtPrincipalText = this.formatMoney(t.debtPrincipal);
+    this.debtInterestText = this.formatMoney(t.debtInterest);
+    this.dailyInterestText = this.formatMoney(t.dailyInterest);
     this.updatePreview();
   }
 
@@ -656,15 +664,31 @@ export struct TradeView {
   openLoan(): void {
     this.loanTip = '';
     this.loanAmountText = '100000';
+    this.updateLoanPreview();
     this.showLoan = true;
+  }
+
+  /** 按当前输入预估利息成本 */
+  updateLoanPreview(): void {
+    const amt: number = this.parseLoanAmount();
+    if (amt <= 0) {
+      this.loanPreviewText = '';
+      return;
+    }
+    const r: number = AppConfig.DAILY_LOAN_RATE;
+    const m30: number = amt * (Math.pow(1 + r, 30) - 1);
+    const m250: number = amt * (Math.pow(1 + r, 250) - 1);
+    this.loanPreviewText = `借 ${this.formatMoney(amt)}：30 个交易日利息约 ${this.formatMoney(m30)}，持满 250 个交易日约 ${this.formatMoney(m250)}`;
   }
 
   fillLoan(v: number): void {
     this.loanAmountText = `${v}`;
+    this.updateLoanPreview();
   }
 
   fillLoanMax(): void {
     this.loanAmountText = `${Math.round(AppContext.getTrading().loanAvailable)}`;
+    this.updateLoanPreview();
   }
 
   parseLoanAmount(): number {
@@ -1134,7 +1158,7 @@ export struct TradeView {
           }
           .width('100%')
 
-          Text(`负债 ${this.debtText} · 手续费 ${this.feeText} · 可卖 ${this.sellableText}`)
+          Text(`负债 ${this.debtText}（息 ${this.debtInterestText}）· 手续费 ${this.feeText} · 可卖 ${this.sellableText}`)
             .fontSize(10)
             .fontColor('#6B717C')
             .margin({ top: 6 })
@@ -1379,6 +1403,10 @@ export struct TradeView {
                   .fontSize(14)
                   .fontColor('#C9A227')
                   .margin({ top: 4 })
+                Text(`本金 ${this.debtPrincipalText} + 息 ${this.debtInterestText}`)
+                  .fontSize(9)
+                  .fontColor('#8A7B4A')
+                  .margin({ top: 2 })
               }
               .alignItems(HorizontalAlign.Center)
               .layoutWeight(1)
@@ -1398,10 +1426,17 @@ export struct TradeView {
             .width('100%')
             .margin({ top: 16 })
 
-            Text('年化 8%，每个交易日按复利计息')
-              .fontSize(10)
-              .fontColor('#6B717C')
-              .margin({ top: 10 })
+            Row() {
+              Text('日息 0.032% · 年化 8% · 每个交易日复利')
+                .fontSize(10)
+                .fontColor('#6B717C')
+              Blank()
+              Text(`每天约 +${this.dailyInterestText}`)
+                .fontSize(10)
+                .fontColor(this.dailyInterestText === '0' ? '#6B717C' : '#C9A227')
+            }
+            .width('100%')
+            .margin({ top: 10 })
 
             Row() {
               TextInput({ text: this.loanAmountText, placeholder: '金额（元）' })
@@ -1415,6 +1450,7 @@ export struct TradeView {
                 .borderRadius(8)
                 .onChange((v: string) => {
                   this.loanAmountText = v;
+                  this.updateLoanPreview();
                 })
               Text('元')
                 .fontSize(12)
@@ -1423,6 +1459,15 @@ export struct TradeView {
             }
             .width('100%')
             .margin({ top: 12 })
+
+            if (this.loanPreviewText !== '') {
+              Text(this.loanPreviewText)
+                .fontSize(9)
+                .fontColor('#8A7B4A')
+                .lineHeight(15)
+                .width('100%')
+                .margin({ top: 6 })
+            }
 
             Row({ space: 8 }) {
               Button('10万')

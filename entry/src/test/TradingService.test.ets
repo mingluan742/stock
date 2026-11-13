@@ -140,6 +140,18 @@ export default function tradingServiceTest() {
       expect(t.debtInterest > interest1).assertTrue();
     });
 
+    it('日利息应随负债变化，还清后归零', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0, 0, 0, false));
+      expect(t.dailyInterest).assertEqual(0);
+      t.borrow(100000);
+      // 日利率 0.032%，10 万约 32 元/交易日
+      expect(Math.round(t.dailyInterest)).assertEqual(32);
+      t.repay(100000);
+      expect(t.debt).assertEqual(0);
+      expect(t.dailyInterest).assertEqual(0);
+    });
+
     it('杠杆买入应按保证金检查并自动融资', 0, () => {
       const t = new TradingService();
       t.setRules(makeRules(0, 0, 0, false));

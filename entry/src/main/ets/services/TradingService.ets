@@ -419,6 +419,11 @@ export class TradingService {
     return this.loanInterest;
   }
 
+  /** 每个交易日将新增的利息（按当前本息合计估算） */
+  get dailyInterest(): number {
+    return this.debt * AppConfig.DAILY_LOAN_RATE;
+  }
+
   /** 剩余可借额度 */
   get loanAvailable(): number {
     const left: number = AppConfig.MAX_LOAN - this.loanPrincipal;
