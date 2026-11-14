@@ -1352,24 +1352,23 @@ export struct TradeView {
                 ForEach(this.holdingRows, (row: HoldingRow) => {
                   ListItem() {
                     Row() {
-                      Row({ space: 5 }) {
+                      Row({ space: 4 }) {
+                        // 选中标识：行首金色色条（空仓/持仓行统一占位，保证对齐）
+                        Column()
+                          .width(3)
+                          .height(13)
+                          .borderRadius(2)
+                          .backgroundColor(this.activeStockId === row.id ? AppConfig.COLOR_ACCENT : Color.Transparent)
                         Text(row.name)
                           .fontSize(12)
                           .fontWeight(this.activeStockId === row.id ? FontWeight.Bold : FontWeight.Normal)
                           .fontColor(AppConfig.COLOR_TEXT)
                           .maxLines(1)
+                          .textOverflow({ overflow: TextOverflow.Ellipsis })
+                          .layoutWeight(1)
                         Text(row.code)
                           .fontSize(9)
                           .fontColor('#6B717C')
-                          .margin({ top: 2 })
-                        if (this.activeStockId === row.id) {
-                          Text('当前')
-                            .fontSize(8)
-                            .fontColor('#12141A')
-                            .backgroundColor(AppConfig.COLOR_ACCENT)
-                            .borderRadius(4)
-                            .padding({ left: 4, right: 4, top: 1, bottom: 1 })
-                        }
                       }
                       .alignItems(VerticalAlign.Center)
                       .layoutWeight(2)
