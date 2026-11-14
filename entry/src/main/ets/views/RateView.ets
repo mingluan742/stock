@@ -15,10 +15,11 @@ const QUICK: QuickRange[] = [
 ];
 
 /**
- * 汇率走势页（深色，与盯盘页统一）：
+ * 汇率走势页（亮色，与盯盘页统一）：
  * - 数据源：欧洲央行参考汇率（frankfurter 公开接口），真实数据、免 Key
  * - 货币对：美元 / 欧元 / 日元 / 英镑 / 港币 / 澳元 对人民币
  * - 区间：30 天 ~ 一年快捷选择，也可自选起止日
+ * - 模拟交易：虚拟资金按真实汇率买卖该货币对，支持多空、加仓、一键平仓
  */
 @Component
 export struct RateView {
@@ -41,6 +42,18 @@ export struct RateView {
   @State lowText: string = '--';
   @State volText: string = '--';
   @State countText: string = '';
+
+  // ===== 模拟交易 =====
+  /** 虚拟现金（元） */
+  @State tradeCash: number = 1000000;
+  /** 持仓份额（外币，正=多头 负=空头） */
+  @State tradeShares: number = 0;
+  /** 开仓均价 */
+  @State tradeAvg: number = 0;
+  /** 投入金额输入 */
+  @State amountText: string = '100000';
+  /** 交易提示 */
+  @State tradeTip: string = '';
 
   // 日期选择弹层
   @State pickerOpen: boolean = false;
@@ -154,6 +167,155 @@ export struct RateView {
       this.volText = `${(std * Math.sqrt(250) * 100).toFixed(2)}%`;
     } else {
       this.volText = '--';
+    }
+  }
+
+  // ===== 模拟交易 =====
+
+  /** 当前成交价：区间最后一个交易日 */
+  tradePrice(): number {
+    return this.points.length > 0 ? this.points[this.points.length - 1].value : 0;
+  }
+
+  /** 净资产 = 现金 + 持仓市值 */
+  netValue(): number {
+    return this.tradeCash + this.tradeShares * this.tradePrice();
+  }
+
+  /** 浮动盈亏 */
+  pnlValue(): number {
+    if (this.tradeShares === 0) {
+      return 0;
+    }
+    return this.tradeShares * (this.tradePrice() - this.tradeAvg);
+  }
+
+  /** 金额千分位 */
+  fmtMoney(v: number): string {
+    const s: string = Math.abs(Math.round(v)).toString();
+    let rest: string = s;
+    let out: string = '';
+    while (rest.length > 3) {
+      out = `,${rest.substring(rest.length - 3)}${out}`;
+      rest = rest.substring(0, rest.length - 3);
+    }
+    return rest + out;
+  }
+
+  /** 持仓描述 */
+  sharesLabel(): string {
+    if (this.tradeShares > 0) {
+      return `多 ${Math.abs(this.tradeShares).toFixed(2)} ${this.base}`;
+    }
+    if (this.tradeShares < 0) {
+      return `空 ${Math.abs(this.tradeShares).toFixed(2)} ${this.base}`;
+    }
+    return '空仓';
+  }
+
+  /** 盈亏描述 */
+  pnlLabel(): string {
+    const p: number = this.pnlValue();
+    if (p === 0) {
+      return '0';
+    }
+    return `${p >= 0 ? '+' : '-'}${this.fmtMoney(Math.abs(p))}`;
+  }
+
+  /** 解析投入金额 */
+  parseAmount(): number {
+    const v: number = parseFloat(this.amountText);
+    if (!isFinite(v) || v <= 0) {
+      return 0;
+    }
+    return v;
+  }
+
+  /** 一键填满可用现金 */
+  fillTradeMax(): void {
+    this.amountText = `${Math.floor(this.tradeCash)}`;
+    this.tradeTip = '';
+  }
+
+  /** 应用一笔成交：delta > 0 买入，delta < 0 卖出（单位：外币） */
+  applyTrade(delta: number, price: number): void {
+    const old: number = this.tradeShares;
+    const nu: number = old + delta;
+    if (old === 0 || (old > 0 && delta > 0) || (old < 0 && delta < 0)) {
+      // 同向开仓 / 加仓：均价加权
+      const absOld: number = Math.abs(old);
+      const absAdd: number = Math.abs(delta);
+      this.tradeAvg = absOld === 0
+        ? price
+        : (absOld * this.tradeAvg + absAdd * price) / (absOld + absAdd);
+    } else if ((old > 0 && nu < 0) || (old < 0 && nu > 0)) {
+      // 反向穿仓：直接翻转为新方向
+      this.tradeAvg = price;
+    }
+    // 部分平仓：均价不变
+    this.tradeShares = nu;
+    this.tradeCash -= delta * price;
+  }
+
+  /** 买入：看涨，多支付现金 */
+  buyRate(): void {
+    const price: number = this.tradePrice();
+    if (price <= 0) {
+      this.tradeTip = '汇率数据尚未加载';
+      return;
+    }
+    const amt: number = this.parseAmount();
+    if (amt <= 0) {
+      this.tradeTip = '请输入有效金额';
+      return;
+    }
+    if (amt > this.tradeCash) {
+      this.tradeTip = `可用现金不足（当前 ${this.fmtMoney(this.tradeCash)} 元）`;
+      return;
+    }
+    this.applyTrade(amt / price, price);
+    this.tradeTip = '';
+    this.showTip(`已买入 ${(amt / price).toFixed(2)} ${this.base}`);
+  }
+
+  /** 卖出：看跌，空头或平多 */
+  sellRate(): void {
+    const price: number = this.tradePrice();
+    if (price <= 0) {
+      this.tradeTip = '汇率数据尚未加载';
+      return;
+    }
+    const amt: number = this.parseAmount();
+    if (amt <= 0) {
+      this.tradeTip = '请输入有效金额';
+      return;
+    }
+    this.applyTrade(-amt / price, price);
+    this.tradeTip = '';
+    this.showTip(`已卖出 ${(amt / price).toFixed(2)} ${this.base}`);
+  }
+
+  /** 一键平仓：按当前汇率结算 */
+  closePosition(): void {
+    if (this.tradeShares === 0) {
+      this.tradeTip = '当前没有持仓';
+      return;
+    }
+    const pnl: number = this.pnlValue();
+    this.tradeCash = this.netValue();
+    this.tradeShares = 0;
+    this.tradeAvg = 0;
+    this.tradeTip = '';
+    this.showTip(`已平仓，本笔${pnl >= 0 ? '盈利' : '亏损'} ${this.fmtMoney(Math.abs(pnl))} 元`);
+  }
+
+  /** 轻提示 */
+  showTip(msg: string): void {
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: msg, duration: 1400 });
+    } catch (err) {
+      const e = err as Error;
+      console.info(`[StockLab] toast 失败: ${e.message}`);
     }
   }
 
@@ -285,7 +447,8 @@ export struct RateView {
 
   build() {
     Stack() {
-      Column() {
+      Scroll() {
+        Column() {
         // 顶栏
         Row() {
           Text('‹')
@@ -531,7 +694,141 @@ export struct RateView {
         .width('100%')
         .padding({ left: 20, right: 20, top: 14 })
 
-        Blank()
+        // 模拟交易卡（虚拟资金，真实汇率）
+        Column() {
+          Row() {
+            Text('模拟交易')
+              .fontSize(13)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(AppConfig.COLOR_TEXT)
+            Text('虚拟资金 · 不涉及真实交易')
+              .fontSize(9)
+              .fontColor('#9AA0A9')
+              .margin({ left: 8 })
+            Blank()
+            Text(`净资产 ${this.fmtMoney(this.netValue())}`)
+              .fontSize(10)
+              .fontColor(AppConfig.COLOR_SUB)
+          }
+          .width('100%')
+
+          Row() {
+            Column() {
+              Text(`现金 ${this.fmtMoney(this.tradeCash)}`)
+                .fontSize(9)
+                .fontColor('#9AA0A9')
+              Text(this.sharesLabel())
+                .fontSize(11)
+                .fontColor(this.tradeShares > 0 ? AppConfig.COLOR_UP
+                  : (this.tradeShares < 0 ? AppConfig.COLOR_DOWN : '#9AA0A9'))
+                .margin({ top: 2 })
+            }
+            .alignItems(HorizontalAlign.Start)
+            .layoutWeight(1)
+
+            Column() {
+              Text(`浮动盈亏 ${this.pnlLabel()}`)
+                .fontSize(10)
+                .fontColor(this.pnlValue() >= 0 ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN)
+              Text(this.tradeAvg > 0 ? `成本 ${this.fmtRate(this.tradeAvg)}` : '点击下方按钮开仓')
+                .fontSize(9)
+                .fontColor('#9AA0A9')
+                .margin({ top: 2 })
+            }
+            .alignItems(HorizontalAlign.End)
+            .layoutWeight(1)
+          }
+          .width('100%')
+          .margin({ top: 8 })
+
+          Row() {
+            Text('¥')
+              .fontSize(12)
+              .fontColor('#7A808B')
+              .margin({ left: 8 })
+            TextInput({ text: this.amountText })
+              .type(InputType.Number)
+              .layoutWeight(1)
+              .height(34)
+              .fontSize(14)
+              .fontColor(AppConfig.COLOR_TEXT)
+              .backgroundColor(Color.Transparent)
+              .onChange((v: string) => {
+                this.amountText = v;
+                this.tradeTip = '';
+              })
+            Text('MAX')
+              .fontSize(9)
+              .fontColor('#2E9E5B')
+              .backgroundColor('#E4F4EA')
+              .borderRadius(6)
+              .padding({ left: 8, right: 8, top: 5, bottom: 5 })
+              .margin({ right: 4 })
+              .onClick(() => {
+                this.fillTradeMax();
+              })
+          }
+          .width('100%')
+          .height(36)
+          .margin({ top: 8 })
+          .backgroundColor('#F4F6F9')
+          .borderRadius(10)
+
+          if (this.tradeTip !== '') {
+            Text(this.tradeTip)
+              .fontSize(10)
+              .fontColor('#E64545')
+              .margin({ top: 6 })
+          }
+
+          Row({ space: 10 }) {
+            Button('▲ 买入 · 看涨')
+              .layoutWeight(1)
+              .height(44)
+              .fontSize(14)
+              .backgroundColor('#BFE8D2')
+              .fontColor('#1F6B45')
+              .borderRadius(12)
+              .onClick(() => {
+                this.buyRate();
+              })
+            Button('▼ 卖出 · 看跌')
+              .layoutWeight(1)
+              .height(44)
+              .fontSize(14)
+              .backgroundColor('#F7D9E1')
+              .fontColor('#A63D5C')
+              .borderRadius(12)
+              .onClick(() => {
+                this.sellRate();
+              })
+          }
+          .width('100%')
+          .margin({ top: 10 })
+
+          Row() {
+            Text('相同方向重复操作可加仓，反方向操作会先平掉旧仓')
+              .fontSize(8)
+              .fontColor('#B4B9C0')
+            Blank()
+            Text('一键平仓')
+              .fontSize(10)
+              .fontColor(AppConfig.LIGHT_ACCENT)
+              .padding({ top: 6, bottom: 2, left: 8 })
+              .onClick(() => {
+                this.closePosition();
+              })
+          }
+          .width('100%')
+          .margin({ top: 6 })
+        }
+        .width('100%')
+        .padding(12)
+        .margin({ left: 16, right: 16, top: 12 })
+        .backgroundColor('#FFFFFF')
+        .borderRadius(16)
+        .border({ width: 1, color: '#E9EBF0' })
+        .alignItems(HorizontalAlign.Start)
 
         Text('数据来自欧洲央行每日参考汇率，仅含交易日，周末与部分节假日无数据。')
           .fontSize(9)
@@ -539,9 +836,14 @@ export struct RateView {
           .width('100%')
           .textAlign(TextAlign.Center)
           .padding({ left: 24, right: 24, bottom: 20 })
+        }
+        .width('100%')
+        .padding({ bottom: 12 })
       }
       .width('100%')
       .height('100%')
+      .scrollBar(BarState.Auto)
+      .edgeEffect(EdgeEffect.Spring)
 
       // 日期选择弹层
       if (this.pickerOpen) {
