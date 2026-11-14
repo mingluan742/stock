@@ -62,6 +62,34 @@ export default function tradingServiceTest() {
       expect(r2.ok).assertTrue();
     });
 
+    it('强平应无视 T+1 全部平仓', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0, 1, 0.001, true));
+      t.newDay('2026-01-05');
+      t.buy(100, 100, 0);
+      // 当日买入被 T+1 冻结，但强平必须允许全部卖出
+      expect(t.forceClose(100)).assertTrue();
+      expect(t.shares()).assertEqual(0);
+      expect(t.sellableShares()).assertEqual(0);
+    });
+
+    it('空头强平应按现价买回并结算', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0, 0, 0, true));
+      t.newDay('2026-01-05');
+      t.sell(100, 100, 0); // 开空 100 股 @100，现金 +10000
+      const before: number = t.cash;
+      expect(t.forceClose(120)).assertTrue(); // 价格涨到 120，亏 2000
+      expect(t.shares()).assertEqual(0);
+      expect(t.cash).assertEqual(before - 12000);
+    });
+
+    it('无持仓时强平应返回 false', 0, () => {
+      const t = new TradingService();
+      t.setRules(makeRules(0, 0, 0, false));
+      expect(t.forceClose(100)).assertFalse();
+    });
+
     it('涨停封板不可买入', 0, () => {
       const t = new TradingService();
       t.setRules(makeRules(0.1, 0, 0, false));

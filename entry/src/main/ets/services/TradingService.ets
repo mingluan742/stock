@@ -533,6 +533,60 @@ export class TradingService {
     return this.netAsset(price) <= 0;
   }
 
+  /**
+   * 强制平仓（维护保证金强平）：无视涨跌停、T+1 与可卖限制，按现价全部结清
+   * @param price 现价
+   * @param stockId 目标股票（单标的传 null）
+   * @returns 是否发生了平仓
+   */
+  forceClose(price: number, stockId: string | null = null): boolean {
+    if (price <= 0) {
+      return false;
+    }
+    const p: Position = this.pos(stockId);
+    if (p.shares === 0) {
+      return false;
+    }
+    if (p.shares > 0) {
+      const qty: number = p.shares;
+      const amount: number = price * qty;
+      const fee: number = amount * this.rules.feeRate;
+      const longAvg: number = p.cost / p.shares;
+      this.account.cash += amount - fee;
+      this.feeTotalValue += fee;
+      this.records.push({
+        date: this.lastDate,
+        side: '卖',
+        price: price,
+        qty: qty,
+        fee: fee,
+        amount: amount,
+        realized: (price - longAvg) * qty
+      });
+    } else {
+      const qty: number = -p.shares;
+      const amount: number = price * qty;
+      const fee: number = amount * this.rules.feeRate;
+      const shortAvg: number = p.cost / p.shares;
+      this.account.cash -= amount + fee;
+      this.feeTotalValue += fee;
+      this.records.push({
+        date: this.lastDate,
+        side: '买',
+        price: price,
+        qty: qty,
+        fee: fee,
+        amount: amount,
+        realized: (shortAvg - price) * qty
+      });
+    }
+    p.shares = 0;
+    p.cost = 0;
+    p.todayBought = 0;
+    this.syncSingle();
+    return true;
+  }
+
   /** 重开剧本时重置账户 */
   reset(): void {
     this.account = new Account();

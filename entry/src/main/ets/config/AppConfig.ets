@@ -15,6 +15,10 @@ export class AppConfig {
   static readonly MAX_LEVERAGE: number = 50;
   /** 总债务上限（含杠杆融资） */
   static readonly MAX_DEBT: number = 50000000;
+  /** 爆仓预警线：净资产 ≤ 初始本金 × 该比例时预警并自动暂停 */
+  static readonly WARN_NET_RATIO: number = 0.25;
+  /** 维护保证金强平线：净资产 ≤ 初始本金 × 该比例时强制平仓 */
+  static readonly LIQUIDATE_NET_RATIO: number = 0.1;
   /** 贷款年化利率 */
   static readonly ANNUAL_LOAN_RATE: number = 0.08;
   /** 贷款日利率：年化 8%，按每学期 250 个交易日折算 */

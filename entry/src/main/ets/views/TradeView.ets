@@ -82,6 +82,10 @@ export struct TradeView {
   @State loanAvailText: string = '0';
   @State sellableText: string = '0 股';
   @State bankrupt: boolean = false;
+  /** 已触发爆仓预警（净资产跌破预警线，自动暂停） */
+  @State warned: boolean = false;
+  /** 已触发维护保证金强平 */
+  @State liquidated: boolean = false;
 
   // 下单面板（常驻，不再用弹层）
   @State marginText: string = '100000';
@@ -317,6 +321,8 @@ export struct TradeView {
       this.activeStockId = '';
     }
     this.bankrupt = false;
+    this.warned = false;
+    this.liquidated = false;
     this.roundCounted = false;
     this.showLoan = false;
     const meta = market.meta;
@@ -452,12 +458,41 @@ export struct TradeView {
     this.syncMarketText();
     this.syncAccount();
     this.drawChart();
-    if (trading.bankrupt(bar.price) && !this.bankrupt) {
+    const netNow: number = trading.netAsset(bar.price);
+    const warnLine: number = AppConfig.INIT_CASH * AppConfig.WARN_NET_RATIO;
+    const liquidateLine: number = AppConfig.INIT_CASH * AppConfig.LIQUIDATE_NET_RATIO;
+    // 维护保证金强平：净资产跌破强平线 → 强制平掉全部持仓
+    if (!this.liquidated && !this.bankrupt && netNow <= liquidateLine) {
+      this.liquidated = true;
+      this.warned = true;
+      this.liquidateAll(bar.price);
+      this.syncValuationPrices();
+      this.syncAccount();
+      this.paused = true;
+      if (trading.netAsset(bar.price) <= 0) {
+        this.bankrupt = true;
+        this.progressText = '已爆仓';
+        this.showTip('触及维护保证金线，强平后资不抵债，已爆仓');
+        SaveService.clear();
+      } else {
+        this.progressText = '已强制平仓';
+        this.showTip('⚠ 触及维护保证金线，仓位已被强制平仓');
+      }
+    }
+    // 爆仓：净资产 ≤ 0
+    if (!this.bankrupt && trading.netAsset(bar.price) <= 0) {
       this.bankrupt = true;
       this.paused = true;
       this.progressText = '已爆仓';
       this.showTip('净资产归零，已爆仓');
       SaveService.clear();
+    }
+    // 预警：净资产跌破预警线 → 自动暂停，等待用户减仓或补充资金
+    if (!this.warned && !this.bankrupt && trading.netAsset(bar.price) <= warnLine) {
+      this.warned = true;
+      this.paused = true;
+      this.progressText = '⚠ 接近爆仓';
+      this.showTip(`⚠ 净资产低于 ${Math.round(warnLine)}，已自动暂停，请减仓或补充资金`);
     }
     if (market.finished) {
       this.finished = true;
@@ -946,6 +981,21 @@ export struct TradeView {
     }
   }
 
+  /** 维护保证金强平：无视 T+1 平掉所有股票持仓 */
+  liquidateAll(price: number): void {
+    const t = AppContext.getTrading();
+    const market = AppContext.getMarket();
+    if (this.stockTabs.length === 0) {
+      t.forceClose(price, null);
+      return;
+    }
+    for (const st of this.stockTabs) {
+      const bar: KLine | null = market.barAt(st.id, market.dayIndex);
+      const px: number = bar === null ? price : bar.price;
+      t.forceClose(px, st.id);
+    }
+  }
+
   // ===== 贷款面板 =====
 
   openLoan(): void {
@@ -1312,8 +1362,16 @@ export struct TradeView {
             Text(this.netText)
               .fontSize(26)
               .fontWeight(FontWeight.Bold)
-              .fontColor(AppConfig.COLOR_TEXT)
+              .fontColor(this.warned ? '#C9770F' : AppConfig.COLOR_TEXT)
               .margin({ top: 4 })
+            if (this.warned && !this.bankrupt) {
+              Text(this.liquidated
+                ? '⚠ 已触及维护保证金线，仓位被强制平仓'
+                : `⚠ 接近爆仓（净资产低于 ${Math.round(AppConfig.INIT_CASH * AppConfig.WARN_NET_RATIO)}），已自动暂停`)
+                .fontSize(9)
+                .fontColor('#C9770F')
+                .margin({ top: 2 })
+            }
 
             Row() {
               Column() {
@@ -2087,7 +2145,7 @@ export struct TradeView {
                   .fontColor(AppConfig.COLOR_SUB)
                 Text(this.netText)
                   .fontSize(13)
-                  .fontColor(AppConfig.COLOR_TEXT)
+                  .fontColor(this.warned ? '#C9770F' : AppConfig.COLOR_TEXT)
                   .margin({ top: 3 })
               }
               .alignItems(HorizontalAlign.End)

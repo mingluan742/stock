@@ -3,10 +3,10 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: '15f7bdea-c332-43e4-864d-6651518df357'
-  PropagateID: '15f7bdea-c332-43e4-864d-6651518df357'
-  ReservedCode1: '4c3ecbb1-bbfb-4ab2-b186-0dadf96a2e67'
-  ReservedCode2: '4c3ecbb1-bbfb-4ab2-b186-0dadf96a2e67'
+  ProduceID: 'e3c56ed6-8571-4140-abc4-1b7d20b4c5c5'
+  PropagateID: 'e3c56ed6-8571-4140-abc4-1b7d20b4c5c5'
+  ReservedCode1: 'a4f0dbec-a032-4001-a07e-40986ab77e16'
+  ReservedCode2: 'a4f0dbec-a032-4001-a07e-40986ab77e16'
 ---
 
 # 涨跌实验室（StockLab）
@@ -155,6 +155,7 @@ Key 只保存在本机（PersistentStorage），代码中不内置任何密钥�
 | v2.9.1 | 修复买卖按钮找不到：下单卡默认收起并移到持仓卡之前，打开滚动条 |
 | v2.9.2 | 行情列表改为「标的」下拉切换，选项行显示各股持仓数量 |
 | v3.0 | 汇率走势页加入模拟交易：虚拟资金 100 万，按真实汇率买入看涨/卖出看跌，支持加仓、一键平仓，页面改为可滚动 |
+| v3.1 | 风控升级：净资产跌破 25 万自动预警并暂停，跌破 10 万触及维护保证金线强制平仓（无视 T+1），强平后资不抵债仍按爆仓结算；概览卡警示变色 |
 
 ## 待办
 
