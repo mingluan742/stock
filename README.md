@@ -3,10 +3,10 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: 'e393e2df-6a12-4cc2-8b17-5403c7ee65af'
-  PropagateID: 'e393e2df-6a12-4cc2-8b17-5403c7ee65af'
-  ReservedCode1: '1dabe079-db6c-45df-b22d-47b857ab8fb1'
-  ReservedCode2: '1dabe079-db6c-45df-b22d-47b857ab8fb1'
+  ProduceID: 'f7752456-a9e3-401e-baf1-d23ca3a400cb'
+  PropagateID: 'f7752456-a9e3-401e-baf1-d23ca3a400cb'
+  ReservedCode1: '12e204cf-22ed-4d7e-901f-e00288a07394'
+  ReservedCode2: '12e204cf-22ed-4d7e-901f-e00288a07394'
 ---
 
 # 涨跌实验室（StockLab）
@@ -147,6 +147,7 @@ Key 只保存在本机（PersistentStorage），代码中不内置任何密钥�
 | v2.4 | 随机盘快讯区改为持仓总览：每只股票一行（持仓方向/现价/盈亏），点击行切换查看；快讯改为右上角弹窗，5 秒自动消失，不占版面 |
 | v2.4.1 | 持仓总览行紧凑化（名称与代码同行）、区域加高并显示滚动条，股票多时可滚动查看全部持股 |
 | v2.4.2 | 修复持仓总览「当前」徽标溢出盖住持仓文字：改为行首金色色条标识选中，股票名过长自动省略 |
+| v2.5 | 走势图背景改为白色：网格线、面积渐变、切换按钮同步适配浅色 |
 
 ## 待办
 

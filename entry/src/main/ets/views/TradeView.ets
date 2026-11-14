@@ -1020,7 +1020,7 @@ export struct TradeView {
     c.clearRect(0, 0, w, h);
 
     // 网格（两种模式共用）
-    c.strokeStyle = '#23272F';
+    c.strokeStyle = '#E6E9EF';
     c.lineWidth = 1;
     for (let i = 0; i <= 4; i++) {
       const gy: number = padT + (plotH * i) / 4;
@@ -1066,8 +1066,8 @@ export struct TradeView {
     const stepX: number = plotW / (MAX_POINTS - 1);
     const up: boolean = this.lastRatio >= 0;
     const lineColor: string = up ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN;
-    const topColor: string = up ? 'rgba(230,69,69,0.30)' : 'rgba(46,158,91,0.30)';
-    const bottomColor: string = up ? 'rgba(230,69,69,0.02)' : 'rgba(46,158,91,0.02)';
+    const topColor: string = up ? 'rgba(230,69,69,0.18)' : 'rgba(46,158,91,0.18)';
+    const bottomColor: string = up ? 'rgba(230,69,69,0.01)' : 'rgba(46,158,91,0.01)';
 
     // 面积填充
     c.beginPath();
@@ -1291,7 +1291,7 @@ export struct TradeView {
           Canvas(this.ctx)
             .width('100%')
             .height(168)
-            .backgroundColor('#151821')
+            .backgroundColor('#FFFFFF')
             .borderRadius(12)
             .onReady(() => {
               this.drawChart();
@@ -1300,7 +1300,7 @@ export struct TradeView {
           Row() {
             Text('分时')
               .fontSize(10)
-              .fontColor(this.chartMode === 0 ? '#12141A' : '#8A8F99')
+              .fontColor(this.chartMode === 0 ? '#12141A' : '#6B717C')
               .backgroundColor(this.chartMode === 0 ? AppConfig.COLOR_ACCENT : Color.Transparent)
               .borderRadius(6)
               .padding({ left: 8, right: 8, top: 3, bottom: 3 })
@@ -1309,7 +1309,7 @@ export struct TradeView {
               })
             Text('K线')
               .fontSize(10)
-              .fontColor(this.chartMode === 1 ? '#12141A' : '#8A8F99')
+              .fontColor(this.chartMode === 1 ? '#12141A' : '#6B717C')
               .backgroundColor(this.chartMode === 1 ? AppConfig.COLOR_ACCENT : Color.Transparent)
               .borderRadius(6)
               .padding({ left: 8, right: 8, top: 3, bottom: 3 })
@@ -1320,7 +1320,8 @@ export struct TradeView {
           }
           .padding(3)
           .margin({ top: 8, right: 10 })
-          .backgroundColor('rgba(24,28,36,0.85)')
+          .backgroundColor('rgba(255,255,255,0.95)')
+          .border({ width: 1, color: '#E2E5EC' })
           .borderRadius(9)
         }
         .width('100%')
