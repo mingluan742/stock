@@ -202,7 +202,7 @@ export struct RateView {
     const plotW: number = w - padL - padR;
     const plotH: number = h - padT - padB;
 
-    c.strokeStyle = '#23272F';
+    c.strokeStyle = '#E6E9EF';
     c.lineWidth = 1;
     for (let i = 0; i <= 3; i++) {
       const gy: number = padT + (plotH * i) / 3;
@@ -236,8 +236,8 @@ export struct RateView {
     const stepX: number = plotW / (n - 1);
     const rising: boolean = this.points[n - 1].value >= this.points[0].value;
     const lineColor: string = rising ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN;
-    const topColor: string = rising ? 'rgba(230,69,69,0.24)' : 'rgba(46,158,91,0.24)';
-    const bottomColor: string = rising ? 'rgba(230,69,69,0.02)' : 'rgba(46,158,91,0.02)';
+    const topColor: string = rising ? 'rgba(230,69,69,0.18)' : 'rgba(46,158,91,0.18)';
+    const bottomColor: string = rising ? 'rgba(230,69,69,0.01)' : 'rgba(46,158,91,0.01)';
 
     // 面积
     c.beginPath();
@@ -317,14 +317,14 @@ export struct RateView {
                 Text(code)
                   .fontSize(13)
                   .fontWeight(this.base === code ? FontWeight.Bold : FontWeight.Normal)
-                  .fontColor(this.base === code ? '#12141A' : '#B8BDC7')
+                  .fontColor(this.base === code ? '#12141A' : '#4A4F58')
                 Text('CNY')
                   .fontSize(8)
-                  .fontColor(this.base === code ? '#12141A' : '#6B717C')
+                  .fontColor(this.base === code ? '#12141A' : '#9AA0A9')
                   .margin({ top: 1 })
               }
               .padding({ left: 14, right: 14, top: 7, bottom: 7 })
-              .backgroundColor(this.base === code ? AppConfig.COLOR_ACCENT : '#22262F')
+              .backgroundColor(this.base === code ? AppConfig.COLOR_ACCENT : '#EAEDF3')
               .borderRadius(10)
               .onClick(() => {
                 this.switchBase(code);
@@ -343,8 +343,8 @@ export struct RateView {
           ForEach(QUICK, (q: QuickRange) => {
             Text(q.label)
               .fontSize(11)
-              .fontColor(this.activeDays === q.days ? '#12141A' : '#8A8F99')
-              .backgroundColor(this.activeDays === q.days ? '#D4A34B' : '#1E222A')
+              .fontColor(this.activeDays === q.days ? '#12141A' : '#7A808B')
+              .backgroundColor(this.activeDays === q.days ? '#B7791F' : '#1E222A')
               .borderRadius(8)
               .padding({ left: 12, right: 12, top: 6, bottom: 6 })
               .onClick(() => {
@@ -370,7 +370,7 @@ export struct RateView {
             })
           Text('→')
             .fontSize(11)
-            .fontColor('#6B717C')
+            .fontColor('#9AA0A9')
             .margin({ left: 8, right: 8 })
           Text(this.endText)
             .fontSize(11)
@@ -384,7 +384,7 @@ export struct RateView {
           Blank()
           Text(this.countText)
             .fontSize(10)
-            .fontColor('#6B717C')
+            .fontColor('#9AA0A9')
         }
         .width('100%')
         .padding({ left: 16, right: 16 })
@@ -425,8 +425,9 @@ export struct RateView {
           Canvas(this.ctx)
             .width('100%')
             .height(200)
-            .backgroundColor('#151821')
+            .backgroundColor('#FFFFFF')
             .borderRadius(12)
+            .border({ width: 1, color: '#E9EBF0' })
             .onReady(() => {
               this.drawChart();
             })
@@ -436,7 +437,7 @@ export struct RateView {
               LoadingProgress()
                 .width(24)
                 .height(24)
-                .color(AppConfig.COLOR_ACCENT)
+                .color(AppConfig.LIGHT_GOLD_LINE)
               Text('正在拉取真实汇率…')
                 .fontSize(10)
                 .fontColor(AppConfig.COLOR_SUB)
@@ -460,8 +461,8 @@ export struct RateView {
                 .height(32)
                 .fontSize(12)
                 .margin({ top: 10 })
-                .backgroundColor('#2A2F3A')
-                .fontColor(AppConfig.COLOR_ACCENT)
+                .backgroundColor('#EFF1F5')
+                .fontColor(AppConfig.LIGHT_ACCENT)
                 .onClick(() => {
                   this.load();
                 })
@@ -562,7 +563,7 @@ export struct RateView {
               Blank()
               Text('确定')
                 .fontSize(13)
-                .fontColor(AppConfig.COLOR_ACCENT)
+                .fontColor(AppConfig.LIGHT_ACCENT)
                 .padding(8)
                 .onClick(() => {
                   this.confirmPicker();
@@ -590,14 +591,14 @@ export struct RateView {
           }
           .width('100%')
           .padding({ left: 16, right: 16, top: 10, bottom: 16 })
-          .backgroundColor('#1C1F27')
+          .backgroundColor('#FFFFFF')
           .borderRadius({ topLeft: 20, topRight: 20 })
           .alignItems(HorizontalAlign.Start)
         }
         .width('100%')
         .height('100%')
         .justifyContent(FlexAlign.End)
-        .backgroundColor('rgba(0,0,0,0.55)')
+        .backgroundColor('rgba(20,24,30,0.32)')
       }
     }
     .width('100%')

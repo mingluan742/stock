@@ -3,10 +3,10 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: 'f7752456-a9e3-401e-baf1-d23ca3a400cb'
-  PropagateID: 'f7752456-a9e3-401e-baf1-d23ca3a400cb'
-  ReservedCode1: '12e204cf-22ed-4d7e-901f-e00288a07394'
-  ReservedCode2: '12e204cf-22ed-4d7e-901f-e00288a07394'
+  ProduceID: '7ddd64ac-a607-4166-aca9-9cde531bc4f2'
+  PropagateID: '7ddd64ac-a607-4166-aca9-9cde531bc4f2'
+  ReservedCode1: 'c46c4697-e3f4-441b-b5d7-f4b6eb4f9366'
+  ReservedCode2: 'c46c4697-e3f4-441b-b5d7-f4b6eb4f9366'
 ---
 
 # 涨跌实验室（StockLab）
@@ -148,6 +148,7 @@ Key 只保存在本机（PersistentStorage），代码中不内置任何密钥�
 | v2.4.1 | 持仓总览行紧凑化（名称与代码同行）、区域加高并显示滚动条，股票多时可滚动查看全部持股 |
 | v2.4.2 | 修复持仓总览「当前」徽标溢出盖住持仓文字：改为行首金色色条标识选中，股票名过长自动省略 |
 | v2.5 | 走势图背景改为白色：网格线、面积渐变、切换按钮同步适配浅色 |
+| v2.6 | 全应用统一亮色主题：盯盘/复盘/汇率三页从深色转为亮色，金色文字加深一档，图表画布加细边框 |
 
 ## 待办
 

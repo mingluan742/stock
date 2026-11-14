@@ -244,7 +244,7 @@ export struct ResultView {
     const plotH: number = h - padT - padB;
 
     // 横向网格
-    c.strokeStyle = '#23272F';
+    c.strokeStyle = '#E6E9EF';
     c.lineWidth = 1;
     for (let i = 0; i <= 3; i++) {
       const gy: number = padT + (plotH * i) / 3;
@@ -278,8 +278,8 @@ export struct ResultView {
     const stepX: number = plotW / (n - 1);
     const up: boolean = this.prices[n - 1] >= this.prices[0];
     const lineColor: string = up ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN;
-    const topColor: string = up ? 'rgba(230,69,69,0.26)' : 'rgba(46,158,91,0.26)';
-    const bottomColor: string = up ? 'rgba(230,69,69,0.02)' : 'rgba(46,158,91,0.02)';
+    const topColor: string = up ? 'rgba(230,69,69,0.18)' : 'rgba(46,158,91,0.18)';
+    const bottomColor: string = up ? 'rgba(230,69,69,0.01)' : 'rgba(46,158,91,0.01)';
 
     const xOf = (i: number): number => padL + i * stepX;
     const yOf = (p: number): number => padT + ((maxP - p) / span) * plotH;
@@ -371,7 +371,7 @@ export struct ResultView {
         Blank()
         Text(this.scenarioName)
           .fontSize(12)
-          .fontColor(AppConfig.COLOR_ACCENT)
+          .fontColor(AppConfig.LIGHT_ACCENT)
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 14, bottom: 6 })
@@ -463,7 +463,7 @@ export struct ResultView {
               Row() {
                 Text('本局解锁')
                   .fontSize(11)
-                  .fontColor(AppConfig.COLOR_ACCENT)
+                  .fontColor(AppConfig.LIGHT_ACCENT)
                 Blank()
                 Text(`${this.newItems.length} 个成就`)
                   .fontSize(10)
@@ -475,7 +475,7 @@ export struct ResultView {
                 Row() {
                   Text(item.icon)
                     .fontSize(14)
-                    .fontColor(AppConfig.COLOR_ACCENT)
+                    .fontColor(AppConfig.LIGHT_ACCENT)
                     .width(20)
                   Text(item.name)
                     .fontSize(12)
@@ -483,7 +483,7 @@ export struct ResultView {
                     .layoutWeight(1)
                   Text(item.tier === 2 ? '传说' : (item.tier === 1 ? '稀有' : ''))
                     .fontSize(9)
-                    .fontColor('#C9A227')
+                    .fontColor('#A9701A')
                 }
                 .width('100%')
                 .padding({ top: 6, bottom: 6 })
@@ -504,7 +504,7 @@ export struct ResultView {
             .width('100%')
             .padding(12)
             .margin({ top: 10 })
-            .backgroundColor('#181C24')
+            .backgroundColor('#FFFFFF')
             .borderRadius(10)
 
           // AI 复盘点评
@@ -512,7 +512,7 @@ export struct ResultView {
             Row() {
               Text('AI 复盘教练')
                 .fontSize(11)
-                .fontColor(AppConfig.COLOR_ACCENT)
+                .fontColor(AppConfig.LIGHT_ACCENT)
               Blank()
               if (this.aiText !== '' && !this.aiLoading) {
                 Text('重新生成')
@@ -531,7 +531,7 @@ export struct ResultView {
                 LoadingProgress()
                   .width(16)
                   .height(16)
-                  .color(AppConfig.COLOR_ACCENT)
+                  .color(AppConfig.LIGHT_GOLD_LINE)
                 Text('正在读这一局的操作…')
                   .fontSize(11)
                   .fontColor(AppConfig.COLOR_SUB)
@@ -548,7 +548,7 @@ export struct ResultView {
             } else {
               Text('把收益、回撤、胜率和每笔流水交给模型，生成一段只针对这一局的点评。')
                 .fontSize(11)
-                .fontColor('#8A8F99')
+                .fontColor('#7A808B')
                 .lineHeight(18)
                 .width('100%')
                 .margin({ top: 8 })
@@ -557,8 +557,8 @@ export struct ResultView {
                   .height(36)
                   .fontSize(12)
                   .margin({ top: 10 })
-                  .backgroundColor('#2A2F3A')
-                  .fontColor(AppConfig.COLOR_ACCENT)
+                  .backgroundColor('#EFF1F5')
+                  .fontColor(AppConfig.LIGHT_ACCENT)
                   .onClick(() => {
                     this.requestAi();
                   })
@@ -567,8 +567,8 @@ export struct ResultView {
                   Button('去设置 API Key')
                     .height(36)
                     .fontSize(12)
-                    .backgroundColor('#2A2F3A')
-                    .fontColor(AppConfig.COLOR_ACCENT)
+                    .backgroundColor('#EFF1F5')
+                    .fontColor(AppConfig.LIGHT_ACCENT)
                     .onClick(() => {
                       this.onGoSettings();
                     })
@@ -598,7 +598,7 @@ export struct ResultView {
             Row() {
               Text('全程行情与买卖点')
                 .fontSize(11)
-                .fontColor(AppConfig.COLOR_ACCENT)
+                .fontColor(AppConfig.LIGHT_ACCENT)
               Blank()
               Text('▲ 买入　▼ 卖出')
                 .fontSize(10)
@@ -610,8 +610,9 @@ export struct ResultView {
             Canvas(this.ctx)
               .width('100%')
               .height(170)
-              .backgroundColor('#151821')
+              .backgroundColor('#FFFFFF')
               .borderRadius(10)
+              .border({ width: 1, color: '#E9EBF0' })
               .onReady(() => {
                 this.drawEquity();
               })
@@ -627,7 +628,7 @@ export struct ResultView {
             Row() {
               Text('交易流水')
                 .fontSize(11)
-                .fontColor(AppConfig.COLOR_ACCENT)
+                .fontColor(AppConfig.LIGHT_ACCENT)
               Blank()
               Text(`${this.flows.length} 笔 · 负债 ${this.debtText}`)
                 .fontSize(10)
@@ -639,7 +640,7 @@ export struct ResultView {
             if (this.flows.length === 0) {
               Text('本局没有成交记录')
                 .fontSize(11)
-                .fontColor('#6B717C')
+                .fontColor('#9AA0A9')
                 .width('100%')
                 .padding({ top: 10, bottom: 10 })
             } else {
@@ -682,7 +683,7 @@ export struct ResultView {
 
           Text('数据为教学演示用行情，节点间为插值结果，非精确历史成交价。')
             .fontSize(10)
-            .fontColor('#6B717C')
+            .fontColor('#9AA0A9')
             .width('100%')
             .margin({ top: 12, bottom: 4 })
         }
@@ -698,8 +699,8 @@ export struct ResultView {
           .layoutWeight(1)
           .height(46)
           .fontSize(15)
-          .backgroundColor('#2A2F3A')
-          .fontColor(AppConfig.COLOR_ACCENT)
+          .backgroundColor('#EFF1F5')
+          .fontColor(AppConfig.LIGHT_ACCENT)
           .onClick(() => {
             this.onReplay();
           })

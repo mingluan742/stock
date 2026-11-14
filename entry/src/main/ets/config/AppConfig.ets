@@ -24,15 +24,15 @@ export class AppConfig {
   static readonly COLOR_UP: string = '#E64545';
   /** 跌（绿跌） */
   static readonly COLOR_DOWN: string = '#2E9E5B';
-  /** 页面背景 */
-  static readonly COLOR_BG: string = '#12141A';
+  /** 页面背景（v2.6 起统一亮色） */
+  static readonly COLOR_BG: string = '#F6F7F9';
   /** 卡片背景 */
-  static readonly COLOR_CARD: string = '#1C1F27';
+  static readonly COLOR_CARD: string = '#FFFFFF';
   /** 主文字 */
-  static readonly COLOR_TEXT: string = '#F2F3F5';
+  static readonly COLOR_TEXT: string = '#16181D';
   /** 次要文字 */
-  static readonly COLOR_SUB: string = '#8A8F99';
-  /** 强调色（金） */
+  static readonly COLOR_SUB: string = '#7A808B';
+  /** 强调色（金，填充用；文字请用 LIGHT_ACCENT） */
   static readonly COLOR_ACCENT: string = '#D4A34B';
 
   /** ===== 明亮主题（主界面 / 列表页） ===== */

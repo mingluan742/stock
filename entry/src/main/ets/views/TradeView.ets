@@ -1198,7 +1198,7 @@ export struct TradeView {
           Blank()
           Text(this.scenarioName)
             .fontSize(12)
-            .fontColor(AppConfig.COLOR_ACCENT)
+            .fontColor(AppConfig.LIGHT_ACCENT)
         }
         .width('100%')
         .padding({ left: 16, right: 16, top: 14 })
@@ -1212,14 +1212,14 @@ export struct TradeView {
                   Text(st.name)
                     .fontSize(12)
                     .fontWeight(this.activeStockId === st.id ? FontWeight.Bold : FontWeight.Normal)
-                    .fontColor(this.activeStockId === st.id ? '#12141A' : '#B8BDC7')
+                    .fontColor(this.activeStockId === st.id ? '#12141A' : '#4A4F58')
                   Text(st.code)
                     .fontSize(8)
-                    .fontColor(this.activeStockId === st.id ? '#12141A' : '#6B717C')
+                    .fontColor(this.activeStockId === st.id ? '#12141A' : '#9AA0A9')
                     .margin({ top: 1 })
                 }
                 .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-                .backgroundColor(this.activeStockId === st.id ? AppConfig.COLOR_ACCENT : '#22262F')
+                .backgroundColor(this.activeStockId === st.id ? AppConfig.COLOR_ACCENT : '#EAEDF3')
                 .borderRadius(9)
                 .onClick(() => {
                   this.pickStock(st.id);
@@ -1260,10 +1260,10 @@ export struct TradeView {
               .margin({ top: 4 })
             Text(this.finished ? '重看复盘' : (this.paused ? '▶ 继续' : '⏸ 暂停'))
               .fontSize(11)
-              .fontColor(AppConfig.COLOR_ACCENT)
+              .fontColor(AppConfig.LIGHT_ACCENT)
               .padding({ left: 8, right: 8, top: 3, bottom: 3 })
               .margin({ top: 6 })
-              .backgroundColor('#22262F')
+              .backgroundColor('#EAEDF3')
               .borderRadius(7)
               .onClick(() => {
                 this.togglePause();
@@ -1274,7 +1274,7 @@ export struct TradeView {
                 .fontColor('#E64545')
                 .padding({ left: 8, right: 8, top: 3, bottom: 3 })
                 .margin({ top: 6 })
-                .backgroundColor('#22262F')
+                .backgroundColor('#EAEDF3')
                 .borderRadius(7)
                 .onClick(() => {
                   this.endRound();
@@ -1293,6 +1293,7 @@ export struct TradeView {
             .height(168)
             .backgroundColor('#FFFFFF')
             .borderRadius(12)
+            .border({ width: 1, color: '#E9EBF0' })
             .onReady(() => {
               this.drawChart();
             })
@@ -1300,7 +1301,7 @@ export struct TradeView {
           Row() {
             Text('分时')
               .fontSize(10)
-              .fontColor(this.chartMode === 0 ? '#12141A' : '#6B717C')
+              .fontColor(this.chartMode === 0 ? '#12141A' : '#9AA0A9')
               .backgroundColor(this.chartMode === 0 ? AppConfig.COLOR_ACCENT : Color.Transparent)
               .borderRadius(6)
               .padding({ left: 8, right: 8, top: 3, bottom: 3 })
@@ -1309,7 +1310,7 @@ export struct TradeView {
               })
             Text('K线')
               .fontSize(10)
-              .fontColor(this.chartMode === 1 ? '#12141A' : '#6B717C')
+              .fontColor(this.chartMode === 1 ? '#12141A' : '#9AA0A9')
               .backgroundColor(this.chartMode === 1 ? AppConfig.COLOR_ACCENT : Color.Transparent)
               .borderRadius(6)
               .padding({ left: 8, right: 8, top: 3, bottom: 3 })
@@ -1320,7 +1321,7 @@ export struct TradeView {
           }
           .padding(3)
           .margin({ top: 8, right: 10 })
-          .backgroundColor('rgba(255,255,255,0.95)')
+          .backgroundColor('rgba(244,246,250,0.96)')
           .border({ width: 1, color: '#E2E5EC' })
           .borderRadius(9)
         }
@@ -1334,18 +1335,18 @@ export struct TradeView {
             Row() {
               Text('持仓总览')
                 .fontSize(11)
-                .fontColor(AppConfig.COLOR_ACCENT)
+                .fontColor(AppConfig.LIGHT_ACCENT)
               Blank()
               Text(this.holdingRows.length > 0 ? `${this.holdingRows.length} 只 · 点击行切换` : '')
                 .fontSize(10)
-                .fontColor('#8A8F99')
+                .fontColor('#7A808B')
             }
             .width('100%')
 
             if (this.holdingRows.length === 0) {
               Text('正在生成行情…')
                 .fontSize(11)
-                .fontColor('#6B717C')
+                .fontColor('#9AA0A9')
                 .width('100%')
                 .margin({ top: 14 })
             } else {
@@ -1369,7 +1370,7 @@ export struct TradeView {
                           .layoutWeight(1)
                         Text(row.code)
                           .fontSize(9)
-                          .fontColor('#6B717C')
+                          .fontColor('#9AA0A9')
                       }
                       .alignItems(VerticalAlign.Center)
                       .layoutWeight(2)
@@ -1377,7 +1378,7 @@ export struct TradeView {
                       Text(row.sharesText)
                         .fontSize(11)
                         .fontColor(row.direction === 1 ? AppConfig.COLOR_UP
-                          : (row.direction === -1 ? AppConfig.COLOR_DOWN : '#6B717C'))
+                          : (row.direction === -1 ? AppConfig.COLOR_DOWN : '#9AA0A9'))
                         .layoutWeight(1.5)
 
                       Text(row.priceText)
@@ -1396,7 +1397,7 @@ export struct TradeView {
                     .width('100%')
                     .padding({ left: 6, right: 6, top: 3, bottom: 3 })
                     .borderRadius(8)
-                    .backgroundColor(this.activeStockId === row.id ? '#20242E' : Color.Transparent)
+                    .backgroundColor(this.activeStockId === row.id ? '#FBF4E5' : Color.Transparent)
                     .onClick(() => {
                       this.pickStock(row.id);
                     })
@@ -1413,9 +1414,9 @@ export struct TradeView {
           .height(112)
           .padding({ left: 14, right: 14, top: 8, bottom: 4 })
           .margin({ left: 16, right: 16, top: 10 })
-          .backgroundColor('#181C24')
+          .backgroundColor('#FFFFFF')
           .borderRadius(12)
-          .border({ width: 1, color: '#22262F' })
+          .border({ width: 1, color: '#EAEDF3' })
           .alignItems(HorizontalAlign.Start)
         } else {
           // 历史现场：事件累积保留，可滑动回看；无事件时显示剧本简介
@@ -1423,11 +1424,11 @@ export struct TradeView {
             Row() {
               Text('历史现场')
                 .fontSize(11)
-                .fontColor(AppConfig.COLOR_ACCENT)
+                .fontColor(AppConfig.LIGHT_ACCENT)
               Blank()
               Text(this.eventList.length > 0 ? `${this.eventList.length} 条 · 上下滑动回看` : '等待历史事件')
                 .fontSize(10)
-                .fontColor(this.eventList.length > 0 ? '#8A8F99' : '#6B717C')
+                .fontColor(this.eventList.length > 0 ? '#7A808B' : '#9AA0A9')
             }
             .width('100%')
 
@@ -1436,7 +1437,7 @@ export struct TradeView {
                 ListItem() {
                   Text(this.introText)
                     .fontSize(11)
-                    .fontColor('#6B717C')
+                    .fontColor('#9AA0A9')
                     .lineHeight(17)
                     .width('100%')
                 }
@@ -1452,12 +1453,12 @@ export struct TradeView {
                         Text(item.title)
                           .fontSize(12)
                           .fontWeight(FontWeight.Medium)
-                          .fontColor(AppConfig.COLOR_ACCENT)
+                          .fontColor(AppConfig.LIGHT_ACCENT)
                       }
                       .width('100%')
                       Text(item.desc)
                         .fontSize(11)
-                        .fontColor('#B8BDC7')
+                        .fontColor('#4A4F58')
                         .lineHeight(16)
                         .maxLines(4)
                         .margin({ top: 3 })
@@ -1479,9 +1480,9 @@ export struct TradeView {
           .height(98)
           .padding({ left: 14, right: 14, top: 8, bottom: 4 })
           .margin({ left: 16, right: 16, top: 10 })
-          .backgroundColor('#181C24')
+          .backgroundColor('#FFFFFF')
           .borderRadius(12)
-          .border({ width: 1, color: this.eventList.length > 0 ? '#4A3F2A' : '#22262F' })
+          .border({ width: 1, color: this.eventList.length > 0 ? '#E8D9B8' : '#EAEDF3' })
           .alignItems(HorizontalAlign.Start)
         }
 
@@ -1538,7 +1539,7 @@ export struct TradeView {
 
             Text('资金')
               .fontSize(11)
-              .fontColor('#D4A34B')
+              .fontColor('#B7791F')
               .padding({ left: 12, right: 2, top: 8, bottom: 8 })
               .onClick(() => {
                 this.openLoan();
@@ -1548,7 +1549,7 @@ export struct TradeView {
 
           Text(`负债 ${this.debtText}（息 ${this.debtInterestText}）· 手续费 ${this.feeText} · 可卖 ${this.sellableText}`)
             .fontSize(10)
-            .fontColor('#6B717C')
+            .fontColor('#9AA0A9')
             .margin({ top: 6 })
             .width('100%')
         }
@@ -1563,8 +1564,8 @@ export struct TradeView {
             .width('100%')
             .height(38)
             .fontSize(13)
-            .backgroundColor('#2A2F3A')
-            .fontColor(AppConfig.COLOR_ACCENT)
+            .backgroundColor('#EFF1F5')
+            .fontColor(AppConfig.LIGHT_ACCENT)
             .margin({ left: 16, right: 16, bottom: 8 })
             .onClick(() => {
               this.stopPlay();
@@ -1583,7 +1584,7 @@ export struct TradeView {
               Row() {
                 Text('¥')
                   .fontSize(12)
-                  .fontColor('#8A8F99')
+                  .fontColor('#7A808B')
                   .margin({ left: 8 })
                 TextInput({ text: this.marginText })
                   .type(InputType.Number)
@@ -1598,7 +1599,7 @@ export struct TradeView {
                   })
                 Text('MAX')
                   .fontSize(10)
-                  .fontColor(AppConfig.COLOR_ACCENT)
+                  .fontColor(AppConfig.LIGHT_ACCENT)
                   .padding({ left: 6, right: 8, top: 8, bottom: 8 })
                   .onClick(() => {
                     this.fillMarginMax();
@@ -1607,7 +1608,7 @@ export struct TradeView {
               .width('100%')
               .height(36)
               .margin({ top: 4 })
-              .backgroundColor('#262B35')
+              .backgroundColor('#F2F4F7')
               .borderRadius(8)
             }
             .layoutWeight(1)
@@ -1622,7 +1623,7 @@ export struct TradeView {
                 Blank()
                 Text(`${this.leverage}×`)
                   .fontSize(13)
-                  .fontColor(AppConfig.COLOR_ACCENT)
+                  .fontColor(AppConfig.LIGHT_ACCENT)
               }
               .width('100%')
 
@@ -1635,9 +1636,9 @@ export struct TradeView {
               })
                 .width('100%')
                 .height(30)
-                .blockColor(AppConfig.COLOR_ACCENT)
-                .trackColor('#2A2F3A')
-                .selectedColor(AppConfig.COLOR_ACCENT)
+                .blockColor(AppConfig.LIGHT_ACCENT)
+                .trackColor('#EFF1F5')
+                .selectedColor(AppConfig.LIGHT_ACCENT)
                 .margin({ top: 2 })
                 .onChange((v: number) => {
                   this.setLeverage(v);
@@ -1646,11 +1647,11 @@ export struct TradeView {
               Row() {
                 Text('1×')
                   .fontSize(8)
-                  .fontColor('#6B717C')
+                  .fontColor('#9AA0A9')
                 Blank()
                 Text('50×')
                   .fontSize(8)
-                  .fontColor('#6B717C')
+                  .fontColor('#9AA0A9')
               }
               .width('100%')
             }
@@ -1692,7 +1693,7 @@ export struct TradeView {
                 .fontColor(AppConfig.COLOR_SUB)
               Text(this.riskText)
                 .fontSize(13)
-                .fontColor('#C9A227')
+                .fontColor('#A9701A')
                 .margin({ top: 3 })
             }
             .alignItems(HorizontalAlign.End)
@@ -1712,7 +1713,7 @@ export struct TradeView {
             Blank()
             Text('一键平仓')
               .fontSize(10)
-              .fontColor(AppConfig.COLOR_ACCENT)
+              .fontColor(AppConfig.LIGHT_ACCENT)
               .padding({ top: 6, bottom: 2, left: 8 })
               .onClick(() => {
                 this.closeAll();
@@ -1763,12 +1764,12 @@ export struct TradeView {
                 Text(p.title)
                   .fontSize(11)
                   .fontWeight(FontWeight.Medium)
-                  .fontColor(AppConfig.COLOR_ACCENT)
+                  .fontColor(AppConfig.LIGHT_ACCENT)
               }
               .width('100%')
               Text(p.desc)
                 .fontSize(10)
-                .fontColor('#B8BDC7')
+                .fontColor('#4A4F58')
                 .lineHeight(14)
                 .maxLines(2)
                 .width('100%')
@@ -1776,9 +1777,9 @@ export struct TradeView {
             }
             .width(232)
             .padding({ left: 10, right: 10, top: 7, bottom: 7 })
-            .backgroundColor('rgba(24,28,36,0.94)')
+            .backgroundColor('rgba(255,255,255,0.97)')
             .borderRadius(10)
-            .border({ width: 1, color: '#4A3F2A' })
+            .border({ width: 1, color: '#E8D9B8' })
             .alignItems(HorizontalAlign.Start)
           }, (p: NewsPopup) => p.cardId)
         }
@@ -1828,7 +1829,7 @@ export struct TradeView {
                   .fontColor(AppConfig.COLOR_SUB)
                 Text(this.debtText)
                   .fontSize(14)
-                  .fontColor('#C9A227')
+                  .fontColor('#A9701A')
                   .margin({ top: 4 })
                 Text(`本金 ${this.debtPrincipalText} + 息 ${this.debtInterestText}`)
                   .fontSize(9)
@@ -1856,11 +1857,11 @@ export struct TradeView {
             Row() {
               Text('日息 0.032% · 年化 8% · 每个交易日复利')
                 .fontSize(10)
-                .fontColor('#6B717C')
+                .fontColor('#9AA0A9')
               Blank()
               Text(`每天约 +${this.dailyInterestText}`)
                 .fontSize(10)
-                .fontColor(this.dailyInterestText === '0' ? '#6B717C' : '#C9A227')
+                .fontColor(this.dailyInterestText === '0' ? '#9AA0A9' : '#A9701A')
             }
             .width('100%')
             .margin({ top: 10 })
@@ -1872,8 +1873,8 @@ export struct TradeView {
                 .height(44)
                 .fontSize(15)
                 .fontColor(AppConfig.COLOR_TEXT)
-                .placeholderColor('#6B717C')
-                .backgroundColor('#262B35')
+                .placeholderColor('#9AA0A9')
+                .backgroundColor('#F2F4F7')
                 .borderRadius(8)
                 .onChange((v: string) => {
                   this.loanAmountText = v;
@@ -1901,8 +1902,8 @@ export struct TradeView {
                 .layoutWeight(1)
                 .height(34)
                 .fontSize(12)
-                .backgroundColor('#262B35')
-                .fontColor('#B8BDC7')
+                .backgroundColor('#F2F4F7')
+                .fontColor('#4A4F58')
                 .onClick(() => {
                   this.fillLoan(100000);
                 })
@@ -1910,8 +1911,8 @@ export struct TradeView {
                 .layoutWeight(1)
                 .height(34)
                 .fontSize(12)
-                .backgroundColor('#262B35')
-                .fontColor('#B8BDC7')
+                .backgroundColor('#F2F4F7')
+                .fontColor('#4A4F58')
                 .onClick(() => {
                   this.fillLoan(200000);
                 })
@@ -1919,8 +1920,8 @@ export struct TradeView {
                 .layoutWeight(1)
                 .height(34)
                 .fontSize(12)
-                .backgroundColor('#262B35')
-                .fontColor('#B8BDC7')
+                .backgroundColor('#F2F4F7')
+                .fontColor('#4A4F58')
                 .onClick(() => {
                   this.fillLoan(500000);
                 })
@@ -1928,8 +1929,8 @@ export struct TradeView {
                 .layoutWeight(1.4)
                 .height(34)
                 .fontSize(12)
-                .backgroundColor('#262B35')
-                .fontColor(AppConfig.COLOR_ACCENT)
+                .backgroundColor('#F2F4F7')
+                .fontColor(AppConfig.LIGHT_ACCENT)
                 .onClick(() => {
                   this.fillLoanMax();
                 })
@@ -1958,7 +1959,7 @@ export struct TradeView {
                 .layoutWeight(1)
                 .height(46)
                 .fontSize(15)
-                .backgroundColor('#2A2F3A')
+                .backgroundColor('#EFF1F5')
                 .fontColor(AppConfig.COLOR_TEXT)
                 .onClick(() => {
                   this.confirmRepay();
@@ -1969,14 +1970,14 @@ export struct TradeView {
           }
           .width('100%')
           .padding(20)
-          .backgroundColor('#1C1F27')
+          .backgroundColor('#FFFFFF')
           .borderRadius({ topLeft: 20, topRight: 20 })
           .alignItems(HorizontalAlign.Start)
         }
         .width('100%')
         .height('100%')
         .justifyContent(FlexAlign.End)
-        .backgroundColor('rgba(0,0,0,0.55)')
+        .backgroundColor('rgba(20,24,30,0.32)')
       }
     }
     .width('100%')
