@@ -1364,77 +1364,78 @@ export struct TradeView {
           .alignItems(HorizontalAlign.Start)
         }
 
-        // 行情列表（随机盘）：全部股票现价与涨跌，点击切换
+        // 标的切换（随机盘）：下拉选择，选项显示持仓数量
         if (this.mode === 'random') {
-          Column() {
-            Row() {
-              Text('行情')
-                .fontSize(13)
-                .fontWeight(FontWeight.Medium)
+          Row() {
+            Text('标的')
+              .fontSize(10)
+              .fontColor('#9AA0A9')
+            Blank()
+            Row({ space: 5 }) {
+              Text(this.activeStockName())
+                .fontSize(12)
                 .fontColor(AppConfig.COLOR_TEXT)
-              Text(`${this.stockTabs.length} 只`)
-                .fontSize(9)
-                .fontColor('#7A808B')
-                .margin({ left: 6 })
-              Blank()
-              Text('点击切换')
-                .fontSize(9)
+              Text(this.activeStockCode())
+                .fontSize(10)
                 .fontColor('#9AA0A9')
+              Text(this.showStockPicker ? '⌃' : '⌄')
+                .fontSize(10)
+                .fontColor('#7A808B')
             }
-            .width('100%')
-
-            ForEach(this.holdingRows, (row: HoldingRow) => {
-              Row() {
-                Row({ space: 6 }) {
-                  Column()
-                    .width(3)
-                    .height(13)
-                    .borderRadius(2)
-                    .backgroundColor(this.activeStockId === row.id ? AppConfig.COLOR_ACCENT : Color.Transparent)
-                  Text(row.name)
-                    .fontSize(12)
-                    .fontWeight(this.activeStockId === row.id ? FontWeight.Bold : FontWeight.Normal)
-                    .fontColor(AppConfig.COLOR_TEXT)
-                  Text(row.code)
-                    .fontSize(9)
-                    .fontColor('#9AA0A9')
-                }
-                .layoutWeight(2.2)
-
-                Text(row.priceText)
-                  .fontSize(12)
-                  .fontColor(AppConfig.COLOR_TEXT)
-                  .textAlign(TextAlign.End)
-                  .layoutWeight(1)
-
-                Text(row.changeText)
-                  .fontSize(11)
-                  .fontColor(row.changeUp ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN)
-                  .textAlign(TextAlign.End)
-                  .layoutWeight(1)
-
-                Text(row.sharesText)
-                  .fontSize(10)
-                  .fontColor(row.direction === 1 ? AppConfig.COLOR_UP : (row.direction === -1 ? AppConfig.COLOR_DOWN : '#9AA0A9'))
-                  .textAlign(TextAlign.End)
-                  .layoutWeight(1.1)
-              }
-              .width('100%')
-              .padding({ left: 6, right: 6, top: 6, bottom: 6 })
-              .borderRadius(8)
-              .backgroundColor(this.activeStockId === row.id ? '#FBF4E5' : Color.Transparent)
-              .onClick(() => {
-                this.pickStock(row.id);
-              })
-            }, (row: HoldingRow) => row.id)
+            .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+            .backgroundColor('#FFFFFF')
+            .borderRadius(10)
+            .border({ width: 1, color: '#E9EBF0' })
+            .onClick(() => {
+              this.showStockPicker = !this.showStockPicker;
+            })
           }
           .width('100%')
-          .padding({ left: 12, right: 12, top: 10, bottom: 8 })
-          .margin({ left: 16, right: 16, top: 10 })
-          .backgroundColor('#FFFFFF')
-          .borderRadius(16)
-          .border({ width: 1, color: '#E9EBF0' })
-          .alignItems(HorizontalAlign.Start)
+          .padding({ left: 16, right: 16 })
+          .margin({ top: 10 })
+
+          if (this.showStockPicker) {
+            Column() {
+              ForEach(this.holdingRows, (row: HoldingRow) => {
+                Row() {
+                  Row({ space: 6 }) {
+                    Column()
+                      .width(3)
+                      .height(13)
+                      .borderRadius(2)
+                      .backgroundColor(this.activeStockId === row.id ? AppConfig.COLOR_ACCENT : Color.Transparent)
+                    Text(row.name)
+                      .fontSize(12)
+                      .fontWeight(this.activeStockId === row.id ? FontWeight.Bold : FontWeight.Normal)
+                      .fontColor(AppConfig.COLOR_TEXT)
+                    Text(row.code)
+                      .fontSize(9)
+                      .fontColor('#9AA0A9')
+                  }
+                  .layoutWeight(1)
+                  Text(row.sharesText)
+                    .fontSize(11)
+                    .fontColor(row.direction === 1 ? AppConfig.COLOR_UP
+                      : (row.direction === -1 ? AppConfig.COLOR_DOWN : '#9AA0A9'))
+                }
+                .width('100%')
+                .padding({ left: 10, right: 10, top: 9, bottom: 9 })
+                .borderRadius(8)
+                .backgroundColor(this.activeStockId === row.id ? '#FBF4E5' : Color.Transparent)
+                .onClick(() => {
+                  this.showStockPicker = false;
+                  this.pickStock(row.id);
+                })
+              }, (row: HoldingRow) => row.id)
+            }
+            .width('100%')
+            .padding(6)
+            .margin({ left: 16, right: 16, top: 6 })
+            .backgroundColor('#FFFFFF')
+            .borderRadius(12)
+            .border({ width: 1, color: '#E9EBF0' })
+            .shadow({ radius: 16, color: 'rgba(31,35,41,0.10)', offsetY: 6 })
+          }
         }
 
         // 行情图表卡
