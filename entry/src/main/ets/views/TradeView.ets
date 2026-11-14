@@ -97,7 +97,7 @@ export struct TradeView {
   // 贷款面板
   @State showLoan: boolean = false;
   /** 下单面板是否展开（默认收起为摘要行） */
-  @State orderExpanded: boolean = true;
+  @State orderExpanded: boolean = false;
   @State loanAmountText: string = '100000';
   @State loanTip: string = '';
   // 利息明细
@@ -1571,275 +1571,6 @@ export struct TradeView {
         .border({ width: 1, color: '#E9EBF0' })
         .alignItems(HorizontalAlign.Start)
 
-        // 随机盘：持仓卡（列表 + 账户摘要）
-        if (this.mode === 'random') {
-          Column() {
-            Row() {
-              Text('持仓')
-                .fontSize(13)
-                .fontWeight(FontWeight.Medium)
-                .fontColor(AppConfig.COLOR_TEXT)
-              Text(`${this.positionCount()}`)
-                .fontSize(9)
-                .fontColor('#FFFFFF')
-                .backgroundColor(AppConfig.LIGHT_ACCENT)
-                .width(16)
-                .height(16)
-                .borderRadius(8)
-                .textAlign(TextAlign.Center)
-                .margin({ left: 6 })
-              Blank()
-              Text('点击行切换')
-                .fontSize(9)
-                .fontColor('#9AA0A9')
-            }
-            .width('100%')
-
-            if (this.positionRows.length === 0) {
-              Text('暂无持仓，在上方行情列表点选一只股票开始建仓吧')
-                .fontSize(10)
-                .fontColor('#9AA0A9')
-                .width('100%')
-                .margin({ top: 8, bottom: 2 })
-            } else {
-              List({ scroller: this.eventScroller }) {
-                ForEach(this.positionRows, (row: HoldingRow) => {
-                  ListItem() {
-                    Row() {
-                      Row({ space: 4 }) {
-                        // 选中标识：行首金色色条（空仓/持仓行统一占位，保证对齐）
-                        Column()
-                          .width(3)
-                          .height(13)
-                          .borderRadius(2)
-                          .backgroundColor(this.activeStockId === row.id ? AppConfig.COLOR_ACCENT : Color.Transparent)
-                        Text(row.name)
-                          .fontSize(12)
-                          .fontWeight(this.activeStockId === row.id ? FontWeight.Bold : FontWeight.Normal)
-                          .fontColor(AppConfig.COLOR_TEXT)
-                          .maxLines(1)
-                          .textOverflow({ overflow: TextOverflow.Ellipsis })
-                          .layoutWeight(1)
-                        Text(row.code)
-                          .fontSize(9)
-                          .fontColor('#9AA0A9')
-                      }
-                      .alignItems(VerticalAlign.Center)
-                      .layoutWeight(2)
-
-                      Text(row.sharesText)
-                        .fontSize(11)
-                        .fontColor(row.direction === 1 ? AppConfig.COLOR_UP
-                          : (row.direction === -1 ? AppConfig.COLOR_DOWN : '#9AA0A9'))
-                        .layoutWeight(1.5)
-
-                      Text(row.priceText)
-                        .fontSize(11)
-                        .fontColor(AppConfig.COLOR_TEXT)
-                        .textAlign(TextAlign.End)
-                        .layoutWeight(1.1)
-
-                      Text(row.pnlText)
-                        .fontSize(12)
-                        .fontWeight(FontWeight.Medium)
-                        .fontColor(row.up ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN)
-                        .textAlign(TextAlign.End)
-                        .layoutWeight(1.4)
-                    }
-                    .width('100%')
-                    .padding({ left: 6, right: 6, top: 3, bottom: 3 })
-                    .borderRadius(8)
-                    .backgroundColor(this.activeStockId === row.id ? '#FBF4E5' : Color.Transparent)
-                    .onClick(() => {
-                      this.pickStock(row.id);
-                    })
-                  }
-                }, (row: HoldingRow) => row.id)
-              }
-              .width('100%')
-              .height(Math.min(this.positionRows.length, 4) * 25 + 4)
-              .margin({ top: 4 })
-              .scrollBar(BarState.Auto)
-            }
-
-            Row() {
-              Text(`现金 ${this.cashText}`)
-                .fontSize(9)
-                .fontColor('#9AA0A9')
-              Blank()
-              Text(`负债 ${this.debtText}`)
-                .fontSize(9)
-                .fontColor('#9AA0A9')
-              Blank()
-              Text(`可卖 ${this.sellableText}`)
-                .fontSize(9)
-                .fontColor('#9AA0A9')
-            }
-            .width('100%')
-            .margin({ top: 8 })
-          }
-          .width('100%')
-          .padding({ left: 12, right: 12, top: 10, bottom: 8 })
-          .margin({ left: 16, right: 16, top: 10 })
-          .backgroundColor('#FFFFFF')
-          .borderRadius(16)
-          .border({ width: 1, color: '#E9EBF0' })
-          .alignItems(HorizontalAlign.Start)
-        } else {
-          // 历史现场：事件累积保留，可滑动回看；无事件时显示剧本简介
-          Column() {
-            Row() {
-              Text('历史现场')
-                .fontSize(11)
-                .fontColor(AppConfig.LIGHT_ACCENT)
-              Blank()
-              Text(this.eventList.length > 0 ? `${this.eventList.length} 条 · 上下滑动回看` : '等待历史事件')
-                .fontSize(10)
-                .fontColor(this.eventList.length > 0 ? '#7A808B' : '#9AA0A9')
-            }
-            .width('100%')
-
-            List({ scroller: this.eventScroller }) {
-              if (this.eventList.length === 0) {
-                ListItem() {
-                  Text(this.introText)
-                    .fontSize(11)
-                    .fontColor('#9AA0A9')
-                    .lineHeight(17)
-                    .width('100%')
-                }
-              } else {
-                ForEach(this.eventList, (item: ScenarioEvent) => {
-                  ListItem() {
-                    Column() {
-                      Row() {
-                        Text(item.date)
-                          .fontSize(10)
-                          .fontColor('#7A808B')
-                        Blank()
-                        Text(item.title)
-                          .fontSize(12)
-                          .fontWeight(FontWeight.Medium)
-                          .fontColor(AppConfig.LIGHT_ACCENT)
-                      }
-                      .width('100%')
-                      Text(item.desc)
-                        .fontSize(11)
-                        .fontColor('#4A4F58')
-                        .lineHeight(16)
-                        .maxLines(4)
-                        .margin({ top: 3 })
-                        .width('100%')
-                    }
-                    .width('100%')
-                    .padding({ top: 6, bottom: 6 })
-                    .alignItems(HorizontalAlign.Start)
-                  }
-                }, (item: ScenarioEvent) => item.cardId)
-              }
-            }
-            .width('100%')
-            .layoutWeight(1)
-            .margin({ top: 4 })
-            .scrollBar(BarState.Auto)
-          }
-          .width('100%')
-          .height(98)
-          .padding({ left: 14, right: 14, top: 8, bottom: 4 })
-          .margin({ left: 16, right: 16, top: 10 })
-          .backgroundColor('#FFFFFF')
-          .borderRadius(16)
-          .border({ width: 1, color: this.eventList.length > 0 ? '#E8D9B8' : '#E9EBF0' })
-          .alignItems(HorizontalAlign.Start)
-        }
-
-        if (this.mode !== 'random') {
-          // 账户栏（历史剧本）：一行四列 + 资金入口
-          Column() {
-            Row() {
-              Column() {
-                Text('现金')
-                  .fontSize(10)
-                  .fontColor(AppConfig.COLOR_SUB)
-                Text(this.cashText)
-                  .fontSize(13)
-                  .fontColor(AppConfig.COLOR_TEXT)
-                  .margin({ top: 3 })
-              }
-              .alignItems(HorizontalAlign.Start)
-              .layoutWeight(1)
-
-              Column() {
-                Text('持仓')
-                  .fontSize(10)
-                  .fontColor(AppConfig.COLOR_SUB)
-                Text(this.sharesText)
-                  .fontSize(13)
-                  .fontColor(AppConfig.COLOR_TEXT)
-                  .margin({ top: 3 })
-              }
-              .alignItems(HorizontalAlign.Center)
-              .layoutWeight(1)
-
-              Column() {
-                Text('浮盈')
-                  .fontSize(10)
-                  .fontColor(AppConfig.COLOR_SUB)
-                Text(this.pnlText)
-                  .fontSize(13)
-                  .fontColor(this.pnlUp ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN)
-                  .margin({ top: 3 })
-              }
-              .alignItems(HorizontalAlign.Center)
-              .layoutWeight(1)
-
-              Column() {
-                Text('净资产')
-                  .fontSize(10)
-                  .fontColor(AppConfig.COLOR_SUB)
-                Text(this.netText)
-                  .fontSize(13)
-                  .fontColor(AppConfig.COLOR_TEXT)
-                  .margin({ top: 3 })
-              }
-              .alignItems(HorizontalAlign.End)
-              .layoutWeight(1)
-
-              Text('资金')
-                .fontSize(11)
-                .fontColor('#B7791F')
-                .padding({ left: 12, right: 2, top: 8, bottom: 8 })
-                .onClick(() => {
-                  this.openLoan();
-                })
-            }
-            .width('100%')
-
-            Text(`负债 ${this.debtText}（息 ${this.debtInterestText}）· 手续费 ${this.feeText} · 可卖 ${this.sellableText}`)
-              .fontSize(10)
-              .fontColor('#9AA0A9')
-              .margin({ top: 6 })
-              .width('100%')
-          }
-          .width('100%')
-          .padding({ left: 20, right: 20, top: 8 })
-        }
-
-        // 结算入口：剧本播完或爆仓后可查看复盘
-        if (this.finished || this.bankrupt) {
-          Button('查看结算复盘')
-            .width('100%')
-            .height(38)
-            .fontSize(13)
-            .backgroundColor('#EFF1F5')
-            .fontColor(AppConfig.LIGHT_ACCENT)
-            .margin({ left: 16, right: 16, bottom: 8 })
-            .onClick(() => {
-              this.stopPlay();
-              this.onFinish();
-            })
-        }
-
         // ===== 下单面板（可收起：默认只显示摘要行）=====
         if (this.orderExpanded) {
           Column() {
@@ -2127,6 +1858,275 @@ export struct TradeView {
           .padding({ left: 16, right: 16, top: 8, bottom: 12 })
         }
 
+        // 随机盘：持仓卡（列表 + 账户摘要）
+        if (this.mode === 'random') {
+          Column() {
+            Row() {
+              Text('持仓')
+                .fontSize(13)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(AppConfig.COLOR_TEXT)
+              Text(`${this.positionCount()}`)
+                .fontSize(9)
+                .fontColor('#FFFFFF')
+                .backgroundColor(AppConfig.LIGHT_ACCENT)
+                .width(16)
+                .height(16)
+                .borderRadius(8)
+                .textAlign(TextAlign.Center)
+                .margin({ left: 6 })
+              Blank()
+              Text('点击行切换')
+                .fontSize(9)
+                .fontColor('#9AA0A9')
+            }
+            .width('100%')
+
+            if (this.positionRows.length === 0) {
+              Text('暂无持仓，在上方行情列表点选一只股票开始建仓吧')
+                .fontSize(10)
+                .fontColor('#9AA0A9')
+                .width('100%')
+                .margin({ top: 8, bottom: 2 })
+            } else {
+              List({ scroller: this.eventScroller }) {
+                ForEach(this.positionRows, (row: HoldingRow) => {
+                  ListItem() {
+                    Row() {
+                      Row({ space: 4 }) {
+                        // 选中标识：行首金色色条（空仓/持仓行统一占位，保证对齐）
+                        Column()
+                          .width(3)
+                          .height(13)
+                          .borderRadius(2)
+                          .backgroundColor(this.activeStockId === row.id ? AppConfig.COLOR_ACCENT : Color.Transparent)
+                        Text(row.name)
+                          .fontSize(12)
+                          .fontWeight(this.activeStockId === row.id ? FontWeight.Bold : FontWeight.Normal)
+                          .fontColor(AppConfig.COLOR_TEXT)
+                          .maxLines(1)
+                          .textOverflow({ overflow: TextOverflow.Ellipsis })
+                          .layoutWeight(1)
+                        Text(row.code)
+                          .fontSize(9)
+                          .fontColor('#9AA0A9')
+                      }
+                      .alignItems(VerticalAlign.Center)
+                      .layoutWeight(2)
+
+                      Text(row.sharesText)
+                        .fontSize(11)
+                        .fontColor(row.direction === 1 ? AppConfig.COLOR_UP
+                          : (row.direction === -1 ? AppConfig.COLOR_DOWN : '#9AA0A9'))
+                        .layoutWeight(1.5)
+
+                      Text(row.priceText)
+                        .fontSize(11)
+                        .fontColor(AppConfig.COLOR_TEXT)
+                        .textAlign(TextAlign.End)
+                        .layoutWeight(1.1)
+
+                      Text(row.pnlText)
+                        .fontSize(12)
+                        .fontWeight(FontWeight.Medium)
+                        .fontColor(row.up ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN)
+                        .textAlign(TextAlign.End)
+                        .layoutWeight(1.4)
+                    }
+                    .width('100%')
+                    .padding({ left: 6, right: 6, top: 3, bottom: 3 })
+                    .borderRadius(8)
+                    .backgroundColor(this.activeStockId === row.id ? '#FBF4E5' : Color.Transparent)
+                    .onClick(() => {
+                      this.pickStock(row.id);
+                    })
+                  }
+                }, (row: HoldingRow) => row.id)
+              }
+              .width('100%')
+              .height(Math.min(this.positionRows.length, 4) * 25 + 4)
+              .margin({ top: 4 })
+              .scrollBar(BarState.Auto)
+            }
+
+            Row() {
+              Text(`现金 ${this.cashText}`)
+                .fontSize(9)
+                .fontColor('#9AA0A9')
+              Blank()
+              Text(`负债 ${this.debtText}`)
+                .fontSize(9)
+                .fontColor('#9AA0A9')
+              Blank()
+              Text(`可卖 ${this.sellableText}`)
+                .fontSize(9)
+                .fontColor('#9AA0A9')
+            }
+            .width('100%')
+            .margin({ top: 8 })
+          }
+          .width('100%')
+          .padding({ left: 12, right: 12, top: 10, bottom: 8 })
+          .margin({ left: 16, right: 16, top: 10 })
+          .backgroundColor('#FFFFFF')
+          .borderRadius(16)
+          .border({ width: 1, color: '#E9EBF0' })
+          .alignItems(HorizontalAlign.Start)
+        } else {
+          // 历史现场：事件累积保留，可滑动回看；无事件时显示剧本简介
+          Column() {
+            Row() {
+              Text('历史现场')
+                .fontSize(11)
+                .fontColor(AppConfig.LIGHT_ACCENT)
+              Blank()
+              Text(this.eventList.length > 0 ? `${this.eventList.length} 条 · 上下滑动回看` : '等待历史事件')
+                .fontSize(10)
+                .fontColor(this.eventList.length > 0 ? '#7A808B' : '#9AA0A9')
+            }
+            .width('100%')
+
+            List({ scroller: this.eventScroller }) {
+              if (this.eventList.length === 0) {
+                ListItem() {
+                  Text(this.introText)
+                    .fontSize(11)
+                    .fontColor('#9AA0A9')
+                    .lineHeight(17)
+                    .width('100%')
+                }
+              } else {
+                ForEach(this.eventList, (item: ScenarioEvent) => {
+                  ListItem() {
+                    Column() {
+                      Row() {
+                        Text(item.date)
+                          .fontSize(10)
+                          .fontColor('#7A808B')
+                        Blank()
+                        Text(item.title)
+                          .fontSize(12)
+                          .fontWeight(FontWeight.Medium)
+                          .fontColor(AppConfig.LIGHT_ACCENT)
+                      }
+                      .width('100%')
+                      Text(item.desc)
+                        .fontSize(11)
+                        .fontColor('#4A4F58')
+                        .lineHeight(16)
+                        .maxLines(4)
+                        .margin({ top: 3 })
+                        .width('100%')
+                    }
+                    .width('100%')
+                    .padding({ top: 6, bottom: 6 })
+                    .alignItems(HorizontalAlign.Start)
+                  }
+                }, (item: ScenarioEvent) => item.cardId)
+              }
+            }
+            .width('100%')
+            .layoutWeight(1)
+            .margin({ top: 4 })
+            .scrollBar(BarState.Auto)
+          }
+          .width('100%')
+          .height(98)
+          .padding({ left: 14, right: 14, top: 8, bottom: 4 })
+          .margin({ left: 16, right: 16, top: 10 })
+          .backgroundColor('#FFFFFF')
+          .borderRadius(16)
+          .border({ width: 1, color: this.eventList.length > 0 ? '#E8D9B8' : '#E9EBF0' })
+          .alignItems(HorizontalAlign.Start)
+        }
+
+        if (this.mode !== 'random') {
+          // 账户栏（历史剧本）：一行四列 + 资金入口
+          Column() {
+            Row() {
+              Column() {
+                Text('现金')
+                  .fontSize(10)
+                  .fontColor(AppConfig.COLOR_SUB)
+                Text(this.cashText)
+                  .fontSize(13)
+                  .fontColor(AppConfig.COLOR_TEXT)
+                  .margin({ top: 3 })
+              }
+              .alignItems(HorizontalAlign.Start)
+              .layoutWeight(1)
+
+              Column() {
+                Text('持仓')
+                  .fontSize(10)
+                  .fontColor(AppConfig.COLOR_SUB)
+                Text(this.sharesText)
+                  .fontSize(13)
+                  .fontColor(AppConfig.COLOR_TEXT)
+                  .margin({ top: 3 })
+              }
+              .alignItems(HorizontalAlign.Center)
+              .layoutWeight(1)
+
+              Column() {
+                Text('浮盈')
+                  .fontSize(10)
+                  .fontColor(AppConfig.COLOR_SUB)
+                Text(this.pnlText)
+                  .fontSize(13)
+                  .fontColor(this.pnlUp ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN)
+                  .margin({ top: 3 })
+              }
+              .alignItems(HorizontalAlign.Center)
+              .layoutWeight(1)
+
+              Column() {
+                Text('净资产')
+                  .fontSize(10)
+                  .fontColor(AppConfig.COLOR_SUB)
+                Text(this.netText)
+                  .fontSize(13)
+                  .fontColor(AppConfig.COLOR_TEXT)
+                  .margin({ top: 3 })
+              }
+              .alignItems(HorizontalAlign.End)
+              .layoutWeight(1)
+
+              Text('资金')
+                .fontSize(11)
+                .fontColor('#B7791F')
+                .padding({ left: 12, right: 2, top: 8, bottom: 8 })
+                .onClick(() => {
+                  this.openLoan();
+                })
+            }
+            .width('100%')
+
+            Text(`负债 ${this.debtText}（息 ${this.debtInterestText}）· 手续费 ${this.feeText} · 可卖 ${this.sellableText}`)
+              .fontSize(10)
+              .fontColor('#9AA0A9')
+              .margin({ top: 6 })
+              .width('100%')
+          }
+          .width('100%')
+          .padding({ left: 20, right: 20, top: 8 })
+        }
+
+        // 结算入口：剧本播完或爆仓后可查看复盘
+        if (this.finished || this.bankrupt) {
+          Button('查看结算复盘')
+            .width('100%')
+            .height(38)
+            .fontSize(13)
+            .backgroundColor('#EFF1F5')
+            .fontColor(AppConfig.LIGHT_ACCENT)
+            .margin({ left: 16, right: 16, bottom: 8 })
+            .onClick(() => {
+              this.stopPlay();
+              this.onFinish();
+            })
+        }
+
         // 资金卡（周转小金库）
         Row() {
           Column() {
@@ -2166,7 +2166,7 @@ export struct TradeView {
       }
       .width('100%')
       .height('100%')
-      .scrollBar(BarState.Off)
+      .scrollBar(BarState.Auto)
       .edgeEffect(EdgeEffect.Spring)
 
       // ===== 贷款面板 =====
