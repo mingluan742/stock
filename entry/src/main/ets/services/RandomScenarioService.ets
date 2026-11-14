@@ -115,8 +115,8 @@ export class LiveRandomMarket {
       const sp: StockSpec = this.stocks[i];
       const kline: KLine = { date: date, price: Math.round(st.price * 100) / 100, note: '' };
       sp.timeline.push(kline);
-      // 突发消息：每天每只约 5% 概率
-      if (Math.random() < 0.05) {
+      // 突发消息：每天每只约 2% 概率（4 只股票约每 7 秒一条，不刷屏）
+      if (Math.random() < 0.02) {
         const ei: number = Math.floor(Math.random() * EVENT_TITLES.length);
         const e: ScenarioEvent = {
           date: date,

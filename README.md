@@ -3,10 +3,10 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: 'f1f12aaf-aa9d-4529-8955-6a90de8ab17a'
-  PropagateID: 'f1f12aaf-aa9d-4529-8955-6a90de8ab17a'
-  ReservedCode1: '2ca771b9-2f2f-46c2-8f76-44b1f35eefbd'
-  ReservedCode2: '2ca771b9-2f2f-46c2-8f76-44b1f35eefbd'
+  ProduceID: 'a95006dc-aee6-40f0-884e-d8b646458e98'
+  PropagateID: 'a95006dc-aee6-40f0-884e-d8b646458e98'
+  ReservedCode1: 'b7b2f2d5-060d-44a3-bf95-1bcaa93d1df9'
+  ReservedCode2: 'b7b2f2d5-060d-44a3-bf95-1bcaa93d1df9'
 ---
 
 # 涨跌实验室（StockLab）
