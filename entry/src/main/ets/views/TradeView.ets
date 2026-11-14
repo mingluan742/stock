@@ -22,6 +22,10 @@ interface HoldingRow {
   name: string;
   code: string;
   priceText: string;
+  /** 当日涨跌幅文案，如 +1.25% */
+  changeText: string;
+  /** 当日上涨 */
+  changeUp: boolean;
   sharesText: string;
   pnlText: string;
   /** 盈亏颜色：true = 红（赚） */
@@ -54,6 +58,8 @@ export struct TradeView {
   @State activeStockId: string = '';
   /** 持仓总览行数据（随机盘） */
   @State holdingRows: HoldingRow[] = [];
+  /** 有持仓的股票行（持仓卡专用） */
+  @State positionRows: HoldingRow[] = [];
   @State eraText: string = '';
   @State priceText: string = '--';
   @State changeText: string = '';
@@ -91,7 +97,7 @@ export struct TradeView {
   // 贷款面板
   @State showLoan: boolean = false;
   /** 下单面板是否展开（默认收起为摘要行） */
-  @State orderExpanded: boolean = false;
+  @State orderExpanded: boolean = true;
   @State loanAmountText: string = '100000';
   @State loanTip: string = '';
   // 利息明细
@@ -649,9 +655,15 @@ export struct TradeView {
     const market = AppContext.getMarket();
     const t = AppContext.getTrading();
     const rows: HoldingRow[] = [];
+    const held: HoldingRow[] = [];
     for (const st of this.stockTabs) {
       const bar: KLine | null = market.barAt(st.id, market.dayIndex);
       const price: number = bar === null ? 0 : bar.price;
+      const prev: KLine | null = market.dayIndex > 0 ? market.barAt(st.id, market.dayIndex - 1) : null;
+      let ratio: number = 0;
+      if (prev !== null && prev.price > 0) {
+        ratio = (price - prev.price) / prev.price;
+      }
       const shares: number = t.shares(st.id);
       let direction: number = 0;
       let sharesText: string = '空仓';
@@ -670,14 +682,20 @@ export struct TradeView {
         name: st.name,
         code: st.code,
         priceText: price.toFixed(2),
+        changeText: `${ratio >= 0 ? '+' : ''}${(ratio * 100).toFixed(2)}%`,
+        changeUp: ratio >= 0,
         sharesText: sharesText,
         pnlText: pnl === 0 ? '0' : `${pnl >= 0 ? '+' : '-'}${this.formatMoney(Math.abs(pnl))}`,
         up: pnl >= 0,
         direction: direction
       };
       rows.push(row);
+      if (direction !== 0) {
+        held.push(row);
+      }
     }
     this.holdingRows = rows;
+    this.positionRows = held;
   }
 
   /** 当前选中股票名称 */
@@ -1230,7 +1248,8 @@ export struct TradeView {
 
   build() {
     Stack() {
-      Column() {
+      Scroll() {
+        Column() {
         // 顶栏
         Row() {
           Text('‹')
@@ -1274,91 +1293,176 @@ export struct TradeView {
         .width('100%')
         .padding({ left: 16, right: 16, top: 14 })
 
-        // 多标的：标的选择（随机盘显示）
-        if (this.stockTabs.length > 0) {
-          Row() {
-            Text('标的')
-              .fontSize(10)
-              .fontColor('#9AA0A9')
-            Blank()
-            Row({ space: 5 }) {
-              Text(this.activeStockName())
-                .fontSize(12)
-                .fontColor(AppConfig.COLOR_TEXT)
-              Text(this.activeStockCode())
-                .fontSize(10)
-                .fontColor('#9AA0A9')
-              Text(this.showStockPicker ? '⌃' : '⌄')
+        // 账户概览（随机盘）
+        if (this.mode === 'random') {
+          Column() {
+            Row() {
+              Text('账户总权益')
                 .fontSize(10)
                 .fontColor('#7A808B')
-            }
-            .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-            .backgroundColor('#FFFFFF')
-            .borderRadius(10)
-            .border({ width: 1, color: '#E9EBF0' })
-            .onClick(() => {
-              this.showStockPicker = !this.showStockPicker;
-            })
-          }
-          .width('100%')
-          .padding({ left: 16, right: 16 })
-          .margin({ top: 8 })
-
-          if (this.showStockPicker) {
-            Column() {
-              ForEach(this.stockTabs, (st: StockSpec) => {
-                Row() {
-                  Text(st.name)
-                    .fontSize(12)
-                    .fontColor(AppConfig.COLOR_TEXT)
-                  Blank()
-                  Text(st.code)
-                    .fontSize(10)
-                    .fontColor('#9AA0A9')
-                  if (this.activeStockId === st.id) {
-                    Text('●')
-                      .fontSize(8)
-                      .fontColor(AppConfig.LIGHT_ACCENT)
-                      .margin({ left: 8 })
-                  }
-                }
-                .width('100%')
-                .padding({ left: 10, right: 10, top: 8, bottom: 8 })
-                .borderRadius(8)
-                .backgroundColor(this.activeStockId === st.id ? '#FDF8EC' : Color.Transparent)
-                .onClick(() => {
-                  this.showStockPicker = false;
-                  this.pickStock(st.id);
-                })
-              }, (st: StockSpec) => st.id)
+              Blank()
+              Text('模拟账户')
+                .fontSize(9)
+                .fontColor('#2E9E5B')
+                .backgroundColor('#E4F4EA')
+                .borderRadius(6)
+                .padding({ left: 6, right: 6, top: 2, bottom: 2 })
             }
             .width('100%')
-            .padding(6)
-            .margin({ left: 16, right: 16, top: 6 })
-            .backgroundColor('#FFFFFF')
-            .borderRadius(12)
-            .border({ width: 1, color: '#E9EBF0' })
-          }
-        }
-
-        // 价格区
-        Row() {
-          Column() {
-            Text(this.priceText)
-              .fontSize(40)
+            Text(this.netText)
+              .fontSize(26)
               .fontWeight(FontWeight.Bold)
-              .fontColor(this.changeUp ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN)
-            Text(this.changeText)
-              .fontSize(15)
-              .fontColor(this.changeUp ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN)
-              .margin({ top: 2 })
-          }
-          .alignItems(HorizontalAlign.Start)
+              .fontColor(AppConfig.COLOR_TEXT)
+              .margin({ top: 4 })
 
-          Blank()
+            Row() {
+              Column() {
+                Text('可用余额')
+                  .fontSize(9)
+                  .fontColor('#9AA0A9')
+                Text(this.cashText)
+                  .fontSize(12)
+                  .fontColor(AppConfig.COLOR_TEXT)
+                  .margin({ top: 2 })
+              }
+              .alignItems(HorizontalAlign.Start)
+              .layoutWeight(1)
+
+              Column() {
+                Text('浮动盈亏')
+                  .fontSize(9)
+                  .fontColor('#9AA0A9')
+                Text(this.pnlText)
+                  .fontSize(12)
+                  .fontColor(this.pnlUp ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN)
+                  .margin({ top: 2 })
+              }
+              .alignItems(HorizontalAlign.Center)
+              .layoutWeight(1)
+
+              Column() {
+                Text('待还贷款')
+                  .fontSize(9)
+                  .fontColor('#9AA0A9')
+                Text(this.debtText)
+                  .fontSize(12)
+                  .fontColor('#A9701A')
+                  .margin({ top: 2 })
+              }
+              .alignItems(HorizontalAlign.End)
+              .layoutWeight(1)
+            }
+            .width('100%')
+            .margin({ top: 10 })
+          }
+          .width('100%')
+          .padding(14)
+          .margin({ left: 16, right: 16, top: 10 })
+          .backgroundColor('#FFFFFF')
+          .borderRadius(16)
+          .border({ width: 1, color: '#E9EBF0' })
+          .alignItems(HorizontalAlign.Start)
         }
-        .width('100%')
-        .padding({ left: 20, right: 20, top: 8, bottom: 2 })
+
+        // 行情列表（随机盘）：全部股票现价与涨跌，点击切换
+        if (this.mode === 'random') {
+          Column() {
+            Row() {
+              Text('行情')
+                .fontSize(13)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(AppConfig.COLOR_TEXT)
+              Text(`${this.stockTabs.length} 只`)
+                .fontSize(9)
+                .fontColor('#7A808B')
+                .margin({ left: 6 })
+              Blank()
+              Text('点击切换')
+                .fontSize(9)
+                .fontColor('#9AA0A9')
+            }
+            .width('100%')
+
+            ForEach(this.holdingRows, (row: HoldingRow) => {
+              Row() {
+                Row({ space: 6 }) {
+                  Column()
+                    .width(3)
+                    .height(13)
+                    .borderRadius(2)
+                    .backgroundColor(this.activeStockId === row.id ? AppConfig.COLOR_ACCENT : Color.Transparent)
+                  Text(row.name)
+                    .fontSize(12)
+                    .fontWeight(this.activeStockId === row.id ? FontWeight.Bold : FontWeight.Normal)
+                    .fontColor(AppConfig.COLOR_TEXT)
+                  Text(row.code)
+                    .fontSize(9)
+                    .fontColor('#9AA0A9')
+                }
+                .layoutWeight(2.2)
+
+                Text(row.priceText)
+                  .fontSize(12)
+                  .fontColor(AppConfig.COLOR_TEXT)
+                  .textAlign(TextAlign.End)
+                  .layoutWeight(1)
+
+                Text(row.changeText)
+                  .fontSize(11)
+                  .fontColor(row.changeUp ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN)
+                  .textAlign(TextAlign.End)
+                  .layoutWeight(1)
+
+                Text(row.sharesText)
+                  .fontSize(10)
+                  .fontColor(row.direction === 1 ? AppConfig.COLOR_UP : (row.direction === -1 ? AppConfig.COLOR_DOWN : '#9AA0A9'))
+                  .textAlign(TextAlign.End)
+                  .layoutWeight(1.1)
+              }
+              .width('100%')
+              .padding({ left: 6, right: 6, top: 6, bottom: 6 })
+              .borderRadius(8)
+              .backgroundColor(this.activeStockId === row.id ? '#FBF4E5' : Color.Transparent)
+              .onClick(() => {
+                this.pickStock(row.id);
+              })
+            }, (row: HoldingRow) => row.id)
+          }
+          .width('100%')
+          .padding({ left: 12, right: 12, top: 10, bottom: 8 })
+          .margin({ left: 16, right: 16, top: 10 })
+          .backgroundColor('#FFFFFF')
+          .borderRadius(16)
+          .border({ width: 1, color: '#E9EBF0' })
+          .alignItems(HorizontalAlign.Start)
+        }
+
+        // 行情图表卡
+        Column() {
+          Row() {
+            Column() {
+              Text(this.mode === 'random' ? `${this.activeStockName()} ${this.activeStockCode()}` : this.scenarioName)
+                .fontSize(12)
+                .fontColor('#7A808B')
+              Text(this.priceText)
+                .fontSize(30)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(this.changeUp ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN)
+                .margin({ top: 2 })
+            }
+            .alignItems(HorizontalAlign.Start)
+
+            Blank()
+
+            Text(this.changeText)
+              .fontSize(13)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.changeUp ? AppConfig.COLOR_UP : AppConfig.COLOR_DOWN)
+              .backgroundColor(this.changeUp ? '#FDECEC' : '#E9F6EF')
+              .borderRadius(8)
+              .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+          }
+          .width('100%')
 
         // 实时走势图（右上角切换分时 / K线）
         Stack({ alignContent: Alignment.TopEnd }) {
@@ -1434,7 +1538,7 @@ export struct TradeView {
         }
         .width('100%')
         .height(176)
-        .margin({ left: 16, right: 16, top: 10 })
+        .margin({ top: 8 })
 
         // 快讯条（随机盘）：显示最新一条消息，5 秒后回到等待态
         if (this.mode === 'random') {
@@ -1453,13 +1557,21 @@ export struct TradeView {
               .layoutWeight(1)
           }
           .width('100%')
-          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-          .margin({ left: 16, right: 16, top: 10 })
+          .padding({ left: 10, right: 10, top: 8, bottom: 8 })
+          .margin({ top: 10 })
           .backgroundColor('#F3F7F4')
-          .borderRadius(14)
+          .borderRadius(12)
         }
+        }
+        .width('100%')
+        .padding(12)
+        .margin({ left: 16, right: 16, top: 10 })
+        .backgroundColor('#FFFFFF')
+        .borderRadius(16)
+        .border({ width: 1, color: '#E9EBF0' })
+        .alignItems(HorizontalAlign.Start)
 
-        // 随机盘：手持股票持仓总览（点击行切换查看对应股票）
+        // 随机盘：持仓卡（列表 + 账户摘要）
         if (this.mode === 'random') {
           Column() {
             Row() {
@@ -1477,25 +1589,21 @@ export struct TradeView {
                 .textAlign(TextAlign.Center)
                 .margin({ left: 6 })
               Blank()
-              Text(`净资产 ${this.netText}`)
-                .fontSize(10)
-                .fontColor(AppConfig.COLOR_SUB)
-                .padding({ left: 8, right: 2, top: 4, bottom: 4 })
-                .onClick(() => {
-                  this.openLoan();
-                })
+              Text('点击行切换')
+                .fontSize(9)
+                .fontColor('#9AA0A9')
             }
             .width('100%')
 
-            if (this.holdingRows.length === 0) {
-              Text('正在生成行情…')
-                .fontSize(11)
+            if (this.positionRows.length === 0) {
+              Text('暂无持仓，在上方行情列表点选一只股票开始建仓吧')
+                .fontSize(10)
                 .fontColor('#9AA0A9')
                 .width('100%')
-                .margin({ top: 14 })
+                .margin({ top: 8, bottom: 2 })
             } else {
               List({ scroller: this.eventScroller }) {
-                ForEach(this.holdingRows, (row: HoldingRow) => {
+                ForEach(this.positionRows, (row: HoldingRow) => {
                   ListItem() {
                     Row() {
                       Row({ space: 4 }) {
@@ -1549,7 +1657,7 @@ export struct TradeView {
                 }, (row: HoldingRow) => row.id)
               }
               .width('100%')
-              .height(Math.min(this.holdingRows.length, 4) * 25 + 4)
+              .height(Math.min(this.positionRows.length, 4) * 25 + 4)
               .margin({ top: 4 })
               .scrollBar(BarState.Auto)
             }
@@ -1717,8 +1825,6 @@ export struct TradeView {
           .padding({ left: 20, right: 20, top: 8 })
         }
 
-        Blank()
-
         // 结算入口：剧本播完或爆仓后可查看复盘
         if (this.finished || this.bankrupt) {
           Button('查看结算复盘')
@@ -1738,9 +1844,10 @@ export struct TradeView {
         if (this.orderExpanded) {
           Column() {
             Row() {
-              Text('下单设置')
-                .fontSize(11)
-                .fontColor(AppConfig.COLOR_SUB)
+              Text('开一笔交易')
+                .fontSize(13)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(AppConfig.COLOR_TEXT)
               Blank()
               Text('收起 ⌄')
                 .fontSize(10)
@@ -1751,6 +1858,18 @@ export struct TradeView {
                 })
             }
             .width('100%')
+
+            Row() {
+              Text('交易股票')
+                .fontSize(10)
+                .fontColor(AppConfig.COLOR_SUB)
+              Blank()
+              Text(this.mode === 'random' ? `${this.activeStockName()} ${this.activeStockCode()}` : this.scenarioName)
+                .fontSize(11)
+                .fontColor(AppConfig.COLOR_TEXT)
+            }
+            .width('100%')
+            .margin({ top: 6 })
 
             Row() {
               Column() {
@@ -2007,9 +2126,48 @@ export struct TradeView {
           .width('100%')
           .padding({ left: 16, right: 16, top: 8, bottom: 12 })
         }
+
+        // 资金卡（周转小金库）
+        Row() {
+          Column() {
+            Text('周转资金')
+              .fontSize(13)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(AppConfig.COLOR_TEXT)
+            Text(`可借额度 ${this.loanAvailText} · 年化 8% 复利`)
+              .fontSize(9)
+              .fontColor('#9AA0A9')
+              .margin({ top: 2 })
+          }
+          .alignItems(HorizontalAlign.Start)
+          Blank()
+          Text('借款 / 还款 ›')
+            .fontSize(10)
+            .fontColor(AppConfig.LIGHT_ACCENT)
+            .padding({ left: 10, right: 6, top: 8, bottom: 8 })
+            .onClick(() => {
+              this.openLoan();
+            })
+        }
+        .width('100%')
+        .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+        .margin({ left: 16, right: 16, top: 10 })
+        .backgroundColor('#FFFFFF')
+        .borderRadius(16)
+        .border({ width: 1, color: '#E9EBF0' })
+
+        Text('这是模拟游戏，不构成任何投资建议。')
+          .fontSize(9)
+          .fontColor('#B4B9C0')
+          .margin({ top: 10, bottom: 4 })
+        }
+        .width('100%')
+        .padding({ bottom: 12 })
       }
       .width('100%')
       .height('100%')
+      .scrollBar(BarState.Off)
+      .edgeEffect(EdgeEffect.Spring)
 
       // ===== 贷款面板 =====
       if (this.showLoan) {
@@ -2203,6 +2361,6 @@ export struct TradeView {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(AppConfig.COLOR_BG)
+    .backgroundColor('#F2F7F4')
   }
 }
