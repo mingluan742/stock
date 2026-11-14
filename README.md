@@ -3,10 +3,10 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: 'a95006dc-aee6-40f0-884e-d8b646458e98'
-  PropagateID: 'a95006dc-aee6-40f0-884e-d8b646458e98'
-  ReservedCode1: 'b7b2f2d5-060d-44a3-bf95-1bcaa93d1df9'
-  ReservedCode2: 'b7b2f2d5-060d-44a3-bf95-1bcaa93d1df9'
+  ProduceID: 'a34b12b0-7887-4157-ac42-cda8d942a9d9'
+  PropagateID: 'a34b12b0-7887-4157-ac42-cda8d942a9d9'
+  ReservedCode1: 'e5e60c24-0460-47c0-a79b-85d8bd49cac3'
+  ReservedCode2: 'e5e60c24-0460-47c0-a79b-85d8bd49cac3'
 ---
 
 # 涨跌实验室（StockLab）
@@ -143,6 +143,8 @@ Key 只保存在本机（PersistentStorage），代码中不内置任何密钥�
 | v2.2 | 随机盘多标的：3~5 只股票独立走势与消息、独立持仓记账、现金共用、顶栏切换 |
 | v2.3 | 随机盘改为活市场：无限延续不落幕，手动结束本局，支持存档续玩 |
 | v2.3.1 | 随机盘消息改为快讯：出现 5 秒后自动消失，不入存档；历史剧本的事件照旧累积与恢复 |
+| v2.3.2 | 快讯触发频率下调：每天每只 5% → 2% |
+| v2.4 | 随机盘快讯区改为持仓总览：每只股票一行（持仓方向/现价/盈亏），点击行切换查看；快讯改为右上角弹窗，5 秒自动消失，不占版面 |
 
 ## 待办
 

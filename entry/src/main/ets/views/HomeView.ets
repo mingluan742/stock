@@ -117,7 +117,7 @@ export struct HomeView {
       // 入口 1：历史剧本
       Row() {
         Column() {
-          Text('历史剧本')
+          Text('历史经典案例')
             .fontSize(19)
             .fontWeight(FontWeight.Medium)
             .fontColor(AppConfig.LIGHT_TEXT)
