@@ -3,10 +3,10 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: '7ddd64ac-a607-4166-aca9-9cde531bc4f2'
-  PropagateID: '7ddd64ac-a607-4166-aca9-9cde531bc4f2'
-  ReservedCode1: 'c46c4697-e3f4-441b-b5d7-f4b6eb4f9366'
-  ReservedCode2: 'c46c4697-e3f4-441b-b5d7-f4b6eb4f9366'
+  ProduceID: '492bc8fc-f759-4a19-ab7d-3d199ba77da7'
+  PropagateID: '492bc8fc-f759-4a19-ab7d-3d199ba77da7'
+  ReservedCode1: 'f619f7cd-2898-4ee2-ab45-aed3b2ddecf7'
+  ReservedCode2: 'f619f7cd-2898-4ee2-ab45-aed3b2ddecf7'
 ---
 
 # 涨跌实验室（StockLab）
@@ -150,6 +150,7 @@ Key 只保存在本机（PersistentStorage），代码中不内置任何密钥�
 | v2.5 | 走势图背景改为白色：网格线、面积渐变、切换按钮同步适配浅色 |
 | v2.6 | 全应用统一亮色主题：盯盘/复盘/汇率三页从深色转为亮色，金色文字加深一档，图表画布加细边框 |
 | v2.7 | 盯盘页减负：下单面板默认收起为摘要行（保证金+杠杆+买卖按钮），展开才见滑块与参数；暂停/结束收进顶栏图标；进度与年代信息移入图表左上角 |
+| v2.8 | 盯盘页按参考重排：图表加右侧价格刻度轴/最新价虚线/过去现在标注；标的下拉选择；快讯条替代角落弹窗；两栏参数+刻度+三张参数卡；薄荷绿/淡粉大按钮；底部持仓卡（徽标+净资产+账户摘要） |
 
 ## 待办
 
