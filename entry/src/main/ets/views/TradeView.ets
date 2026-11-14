@@ -2,6 +2,7 @@ import { AppConfig } from '../config/AppConfig';
 import { AppContext } from '../core/AppContext';
 import { Result } from '../core/Result';
 import { SaveService, SaveSnapshot } from '../core/SaveService';
+import { LiveRandomMarket } from '../services/RandomScenarioService';
 import { Account } from '../models/Account';
 import { AchievementContext, AchievementDef } from '../models/Achievement';
 import { KLine } from '../models/KLine';
@@ -101,7 +102,12 @@ export struct TradeView {
       AppContext.init(host.resourceManager);
     }
     if (this.resume) {
-      this.loadScenarioResume(this.scenarioId);
+      const snap: SaveSnapshot | null = SaveService.load();
+      if (snap !== null && snap.mode === 'random' && snap.live !== undefined) {
+        this.loadRandomResume(snap);
+      } else {
+        this.loadScenarioResume(this.scenarioId);
+      }
     } else if (this.mode === 'random') {
       this.loadRandom();
     } else {
@@ -158,12 +164,30 @@ export struct TradeView {
     }
   }
 
-  /** 保存当前对局快照（仅历史剧本，且未结束） */
+  /** 保存当前对局快照（历史与随机都支持；已结束/爆仓不存） */
   saveSnapshot(): void {
-    if (this.mode !== 'history' || this.finished || this.bankrupt) {
+    if (this.finished || this.bankrupt) {
       return;
     }
     const market = AppContext.getMarket();
+    if (this.mode === 'random') {
+      const live = market.liveMarket;
+      if (live === null) {
+        return;
+      }
+      const snap: SaveSnapshot = {
+        mode: 'random',
+        scenarioId: market.meta === null ? 'random-live' : market.meta.id,
+        scenarioName: market.meta === null ? '' : market.meta.name,
+        cursor: market.dayIndex,
+        totalDays: market.totalDays,
+        account: AppContext.getTrading().snapshot(),
+        savedAt: new Date().toISOString(),
+        live: live.serialize()
+      };
+      SaveService.save(snap);
+      return;
+    }
     const meta = market.meta;
     const snap: SaveSnapshot = {
       mode: 'history',
@@ -177,16 +201,61 @@ export struct TradeView {
     SaveService.save(snap);
   }
 
-  /** 生成并载入一局随机行情 */
+  /** 生成并载入一局随机行情（活市场：无限延续） */
   loadRandom(): void {
     try {
-      const data: ScenarioData = AppContext.getRandom().generateMulti();
-      AppContext.getMarket().loadData(data);
+      const m: LiveRandomMarket = AppContext.getRandom().generateLive();
+      AppContext.getMarket().loadLive(m);
       this.applyLoaded();
     } catch (err) {
       const e = err as Error;
       this.scenarioName = `生成失败：${e.message}`;
     }
+  }
+
+  /** 从存档恢复随机盘（活市场 + 账户） */
+  loadRandomResume(snap: SaveSnapshot): void {
+    if (snap.live === undefined) {
+      this.loadRandom();
+      return;
+    }
+    try {
+      const m: LiveRandomMarket = LiveRandomMarket.restore(snap.live);
+      AppContext.getMarket().loadLive(m);
+      this.applyLoaded();
+      const market = AppContext.getMarket();
+      AppContext.getTrading().restore(snap.account);
+      this.eventList = [];
+      this.appendEvents(market.eventsPassed());
+      this.stockTabs = market.stocks;
+      if (market.stocks.length > 0) {
+        this.activeStockId = market.activeStock === null ? market.stocks[0].id : market.activeStock.id;
+      }
+      this.syncValuationPrices();
+      const bar: KLine | null = market.currentBar;
+      if (bar !== null) {
+        this.currentPrice = bar.price;
+      }
+      this.bankrupt = AppContext.getTrading().netAsset(this.currentPrice) <= 0;
+      AppContext.getTrading().updateNetTracking(this.currentPrice);
+      this.syncMarketText();
+      this.syncAccount();
+      this.drawChart();
+      this.startPlay();
+    } catch (err) {
+      const e = err as Error;
+      this.scenarioName = `恢复失败：${e.message}`;
+    }
+  }
+
+  /** 随机模式：用户主动结束本局（唯一结束方式） */
+  endRound(): void {
+    this.stopPlay();
+    this.paused = true;
+    this.finished = true;
+    this.progressText = '已手动结束';
+    SaveService.clear();
+    this.finishRound();
   }
 
   /** 剧本载入后的页面初始化（历史与随机共用） */
@@ -256,9 +325,15 @@ export struct TradeView {
     }
   }
 
+  /** 行情推进到暂停/结束：随机盘永远显示"继续" */
   togglePause(): void {
     if (this.finished) {
-      this.replay();
+      if (this.mode === 'random') {
+        // 随机盘已结束：去复盘页
+        this.onFinish();
+      } else {
+        this.replay();
+      }
       return;
     }
     this.paused = !this.paused;
@@ -430,7 +505,11 @@ export struct TradeView {
     const sign: string = ratio >= 0 ? '+' : '';
     this.changeText = `${sign}${(ratio * 100).toFixed(2)}%`;
     if (!this.finished) {
-      this.progressText = `第 ${market.dayIndex + 1} / ${market.totalDays} 交易日`;
+      if (market.isLive) {
+        this.progressText = `第 ${market.dayIndex + 1} 个交易日 · 无限延续`;
+      } else {
+        this.progressText = `第 ${market.dayIndex + 1} / ${market.totalDays} 交易日`;
+      }
     }
   }
 
@@ -1081,8 +1160,7 @@ export struct TradeView {
               .fontSize(11)
               .fontColor(AppConfig.COLOR_SUB)
               .margin({ top: 4 })
-            Text(this.finished ? (this.mode === 'random' ? '再开一局' : '重播剧情')
-              : (this.paused ? '▶ 继续' : '⏸ 暂停'))
+            Text(this.finished ? '重看复盘' : (this.paused ? '▶ 继续' : '⏸ 暂停'))
               .fontSize(11)
               .fontColor(AppConfig.COLOR_ACCENT)
               .padding({ left: 8, right: 8, top: 3, bottom: 3 })
@@ -1092,6 +1170,18 @@ export struct TradeView {
               .onClick(() => {
                 this.togglePause();
               })
+            if (this.mode === 'random' && !this.finished && !this.bankrupt) {
+              Text('⏹ 结束本局')
+                .fontSize(11)
+                .fontColor('#E64545')
+                .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+                .margin({ top: 6 })
+                .backgroundColor('#22262F')
+                .borderRadius(7)
+                .onClick(() => {
+                  this.endRound();
+                })
+            }
           }
           .alignItems(HorizontalAlign.End)
         }

@@ -1,5 +1,6 @@
 import { KLine } from '../models/KLine';
 import { MarketRuleConfig, ScenarioData, ScenarioMeta, StockSpec } from '../models/Scenario';
+import { LiveRandomMarket } from './RandomScenarioService';
 import { ScenarioEvent } from '../models/ScenarioEvent';
 import { IMarketDataSource } from '../repository/IMarketDataSource';
 
@@ -14,6 +15,8 @@ export class MarketService {
   private cursor: number = 0;
   /** 多标的：当前选中的股票（null = 单标的模式用 data.timeline） */
   private currentStock: StockSpec | null = null;
+  /** 随机模式：活市场（每天实时生成，永不落幕） */
+  private live: LiveRandomMarket | null = null;
 
   constructor(source: IMarketDataSource) {
     this.source = source;
@@ -35,6 +38,41 @@ export class MarketService {
     this.data = data;
     this.cursor = 0;
     this.currentStock = data.stocks === undefined || data.stocks.length === 0 ? null : data.stocks[0];
+  }
+
+  /** 载入活市场（随机模式）：自动生成开局第一根K线 */
+  loadLive(m: LiveRandomMarket): void {
+    this.live = m;
+    const stocks: StockSpec[] = m.stocks;
+    if (stocks[0].timeline.length === 0) {
+      m.nextDay();
+    }
+    const meta: ScenarioMeta = {
+      id: 'random-live',
+      name: stocks[0].name,
+      era: '虚拟市场 · 随机生成',
+      benchmark: '模拟个股 · 多标的',
+      intro: `一局同时交易 ${stocks.length} 只随机生成的股票。每只走势独立，突发消息只影响个股。行情无限延续，直到你主动结束——练习长期持有与仓位管理。`
+    };
+    this.data = {
+      meta: meta,
+      rules: m.rules,
+      timeline: stocks[0].timeline,
+      events: [],
+      stocks: stocks
+    };
+    this.currentStock = stocks[0];
+    this.cursor = stocks[0].timeline.length - 1;
+  }
+
+  /** 是否为活市场模式 */
+  get isLive(): boolean {
+    return this.live !== null;
+  }
+
+  /** 活市场实例（存档用） */
+  get liveMarket(): LiveRandomMarket | null {
+    return this.live;
   }
 
   /** 多标的清单（单标的模式返回空） */
@@ -139,6 +177,10 @@ export class MarketService {
   }
 
   get finished(): boolean {
+    if (this.live !== null) {
+      // 活市场永不落幕
+      return false;
+    }
     const tl: KLine[] = this.timeline();
     if (tl.length === 0) {
       return false;
@@ -160,8 +202,11 @@ export class MarketService {
     return (cur - prev) / prev;
   }
 
-  /** 当前日期触发的历史事件（多标的取选中股票的） */
+  /** 当前日期触发的历史事件（多标的取选中股票的；活市场由 nextDay 直接返回） */
   eventsToday(): ScenarioEvent[] {
+    if (this.live !== null) {
+      return [];
+    }
     if (this.data === null) {
       return [];
     }
@@ -180,8 +225,13 @@ export class MarketService {
     return hits;
   }
 
-  /** 推进一个交易日，返回当天所有股票触发的事件（多标的时合并展示） */
+  /** 推进一个交易日：活市场实时生成下一天；预生成模式回拨游标 */
   advance(): ScenarioEvent[] {
+    if (this.live !== null) {
+      const events: ScenarioEvent[] = this.live.nextDay();
+      this.cursor = this.timeline().length - 1;
+      return events;
+    }
     if (this.data === null) {
       return [];
     }
@@ -227,8 +277,11 @@ export class MarketService {
     this.cursor = 0;
   }
 
-  /** 将时间轴游标移到指定位置（恢复快照用） */
+  /** 将时间轴游标移到指定位置（恢复快照用；活市场忽略） */
   setCursor(n: number): void {
+    if (this.live !== null) {
+      return;
+    }
     const max: number = this.maxStockDays() - 1;
     let v: number = n;
     if (v < 0) {
@@ -264,6 +317,15 @@ export class MarketService {
   eventsPassed(): ScenarioEvent[] {
     const out: ScenarioEvent[] = [];
     if (this.data === null) {
+      return out;
+    }
+    // 活市场：所有股票的全部事件，带股票名前缀
+    if (this.live !== null && this.data.stocks !== undefined) {
+      for (const s of this.data.stocks) {
+        for (const e of s.events) {
+          out.push({ date: e.date, title: `[${s.name}] ${e.title}`, desc: e.desc, cardId: e.cardId });
+        }
+      }
       return out;
     }
     const limit: number = Math.min(this.cursor, this.maxStockDays() - 1);

@@ -39,13 +39,13 @@ struct App {
     }
   }
 
-  /** 从主界面“继续上一局”进入 */
+  /** 从主界面“继续上一局”进入（历史剧本与随机盘都支持） */
   resumeGame(): void {
     const snap: SaveSnapshot | null = SaveService.load();
     if (snap === null) {
       return;
     }
-    this.tradeMode = 'history';
+    this.tradeMode = snap.mode === 'random' ? 'random' : 'history';
     this.tradeId = snap.scenarioId;
     this.resume = true;
     this.view = 'trade';

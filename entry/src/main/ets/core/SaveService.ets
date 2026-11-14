@@ -1,8 +1,9 @@
 import { AccountSnapshot } from '../services/TradingService';
+import { LiveSave } from '../services/RandomScenarioService';
 
 /** 存档快照：用于"继续上一局" */
 export interface SaveSnapshot {
-  /** history / random（随机模式不可恢复，不存） */
+  /** history / random */
   mode: string;
   scenarioId: string;
   scenarioName: string;
@@ -11,6 +12,8 @@ export interface SaveSnapshot {
   totalDays: number;
   account: AccountSnapshot;
   savedAt: string;
+  /** random 模式专用：活市场生成状态与已生成数据 */
+  live?: LiveSave;
 }
 
 /**

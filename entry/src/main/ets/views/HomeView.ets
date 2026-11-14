@@ -178,7 +178,7 @@ export struct HomeView {
             .fontSize(19)
             .fontWeight(FontWeight.Medium)
             .fontColor(AppConfig.LIGHT_TEXT)
-          Text('欧洲央行真实汇率，30 天到一年自选')
+          Text('欧洲央行现实汇率')
             .fontSize(11)
             .fontColor(AppConfig.LIGHT_SUB)
             .margin({ top: 6 })

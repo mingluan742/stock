@@ -1,6 +1,7 @@
 import { AppConfig } from '../config/AppConfig';
 import { AppContext } from '../core/AppContext';
 import { AchievementItem } from '../models/Achievement';
+import { KLine } from '../models/KLine';
 import { TradeRecord } from '../models/TradeRecord';
 import { AiService, ReviewInput } from '../services/AiService';
 
@@ -91,6 +92,17 @@ export struct ResultView {
     this.records = trading.tradeRecords;
 
     const lastPrice: number = this.prices.length > 0 ? this.prices[this.prices.length - 1] : 0;
+    // 多标的：按各股票最新价设置估值（合并净资产才准确）
+    if (market.stocks.length > 0) {
+      const map: Record<string, number> = {};
+      for (const st of market.stocks) {
+        const tl: KLine[] = st.timeline;
+        if (tl.length > 0) {
+          map[st.id] = tl[tl.length - 1].price;
+        }
+      }
+      trading.setValuationPrices(map);
+    }
     const net: number = trading.netAsset(lastPrice);
     const ret: number = (net - AppConfig.INIT_CASH) / AppConfig.INIT_CASH;
     this.returnUp = ret >= 0;
