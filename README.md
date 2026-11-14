@@ -3,10 +3,10 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: 'a34b12b0-7887-4157-ac42-cda8d942a9d9'
-  PropagateID: 'a34b12b0-7887-4157-ac42-cda8d942a9d9'
-  ReservedCode1: 'e5e60c24-0460-47c0-a79b-85d8bd49cac3'
-  ReservedCode2: 'e5e60c24-0460-47c0-a79b-85d8bd49cac3'
+  ProduceID: 'a378e0f2-9f24-4eb7-bd9e-df37128dbc88'
+  PropagateID: 'a378e0f2-9f24-4eb7-bd9e-df37128dbc88'
+  ReservedCode1: 'b0ce2aa6-1190-450d-8313-69561d223773'
+  ReservedCode2: 'b0ce2aa6-1190-450d-8313-69561d223773'
 ---
 
 # 涨跌实验室（StockLab）
@@ -145,6 +145,7 @@ Key 只保存在本机（PersistentStorage），代码中不内置任何密钥�
 | v2.3.1 | 随机盘消息改为快讯：出现 5 秒后自动消失，不入存档；历史剧本的事件照旧累积与恢复 |
 | v2.3.2 | 快讯触发频率下调：每天每只 5% → 2% |
 | v2.4 | 随机盘快讯区改为持仓总览：每只股票一行（持仓方向/现价/盈亏），点击行切换查看；快讯改为右上角弹窗，5 秒自动消失，不占版面 |
+| v2.4.1 | 持仓总览行紧凑化（名称与代码同行）、区域加高并显示滚动条，股票多时可滚动查看全部持股 |
 
 ## 待办
 

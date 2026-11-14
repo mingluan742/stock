@@ -1352,28 +1352,26 @@ export struct TradeView {
                 ForEach(this.holdingRows, (row: HoldingRow) => {
                   ListItem() {
                     Row() {
-                      Column() {
-                        Row({ space: 5 }) {
-                          Text(row.name)
-                            .fontSize(12)
-                            .fontWeight(this.activeStockId === row.id ? FontWeight.Bold : FontWeight.Normal)
-                            .fontColor(AppConfig.COLOR_TEXT)
-                          if (this.activeStockId === row.id) {
-                            Text('当前')
-                              .fontSize(8)
-                              .fontColor('#12141A')
-                              .backgroundColor(AppConfig.COLOR_ACCENT)
-                              .borderRadius(4)
-                              .padding({ left: 4, right: 4, top: 1, bottom: 1 })
-                          }
-                        }
-                        .alignItems(VerticalAlign.Center)
+                      Row({ space: 5 }) {
+                        Text(row.name)
+                          .fontSize(12)
+                          .fontWeight(this.activeStockId === row.id ? FontWeight.Bold : FontWeight.Normal)
+                          .fontColor(AppConfig.COLOR_TEXT)
+                          .maxLines(1)
                         Text(row.code)
                           .fontSize(9)
                           .fontColor('#6B717C')
-                          .margin({ top: 1 })
+                          .margin({ top: 2 })
+                        if (this.activeStockId === row.id) {
+                          Text('当前')
+                            .fontSize(8)
+                            .fontColor('#12141A')
+                            .backgroundColor(AppConfig.COLOR_ACCENT)
+                            .borderRadius(4)
+                            .padding({ left: 4, right: 4, top: 1, bottom: 1 })
+                        }
                       }
-                      .alignItems(HorizontalAlign.Start)
+                      .alignItems(VerticalAlign.Center)
                       .layoutWeight(2)
 
                       Text(row.sharesText)
@@ -1396,7 +1394,7 @@ export struct TradeView {
                         .layoutWeight(1.4)
                     }
                     .width('100%')
-                    .padding({ left: 6, right: 6, top: 4, bottom: 4 })
+                    .padding({ left: 6, right: 6, top: 3, bottom: 3 })
                     .borderRadius(8)
                     .backgroundColor(this.activeStockId === row.id ? '#20242E' : Color.Transparent)
                     .onClick(() => {
@@ -1408,11 +1406,11 @@ export struct TradeView {
               .width('100%')
               .layoutWeight(1)
               .margin({ top: 4 })
-              .scrollBar(BarState.Off)
+              .scrollBar(BarState.Auto)
             }
           }
           .width('100%')
-          .height(98)
+          .height(112)
           .padding({ left: 14, right: 14, top: 8, bottom: 4 })
           .margin({ left: 16, right: 16, top: 10 })
           .backgroundColor('#181C24')
