@@ -95,6 +95,8 @@ export struct TradeView {
   private tickCount: number = 0;
   /** 本局是否已计入结束统计（避免重复累计） */
   private roundCounted: boolean = false;
+  /** 快讯消失计时器（随机盘专用） */
+  private newsTimers: number[] = [];
 
   aboutToAppear(): void {
     const host = this.getUIContext().getHostContext();
@@ -117,6 +119,11 @@ export struct TradeView {
 
   aboutToDisappear(): void {
     this.stopPlay();
+    // 清理快讯消失计时器，避免组件销毁后回调
+    for (const t of this.newsTimers) {
+      clearTimeout(t);
+    }
+    this.newsTimers = [];
   }
 
   async loadScenario(id: string): Promise<void> {
@@ -226,7 +233,6 @@ export struct TradeView {
       const market = AppContext.getMarket();
       AppContext.getTrading().restore(snap.account);
       this.eventList = [];
-      this.appendEvents(market.eventsPassed());
       this.stockTabs = market.stocks;
       if (market.stocks.length > 0) {
         this.activeStockId = market.activeStock === null ? market.stocks[0].id : market.activeStock.id;
@@ -339,7 +345,7 @@ export struct TradeView {
     this.paused = !this.paused;
   }
 
-  /** 把事件累积进列表并滚到底部 */
+  /** 把事件加入列表：历史剧本累积保留；随机盘作为快讯，5 秒后自动消失 */
   appendEvents(events: ScenarioEvent[]): void {
     if (events.length === 0) {
       return;
@@ -350,6 +356,20 @@ export struct TradeView {
     setTimeout(() => {
       this.eventScroller.scrollEdge(Edge.Bottom);
     }, 60);
+    if (this.mode === 'random') {
+      // 快讯模式：每条 5 秒后移除
+      for (const ev of events) {
+        const cardId: string = ev.cardId;
+        const timer: number = setTimeout(() => {
+          this.eventList = this.eventList.filter((x: ScenarioEvent) => x.cardId !== cardId);
+          const idx: number = this.newsTimers.indexOf(timer);
+          if (idx >= 0) {
+            this.newsTimers.splice(idx, 1);
+          }
+        }, 5000);
+        this.newsTimers.push(timer);
+      }
+    }
   }
 
   /** 重播：历史剧本从头再来，随机模式重新生成一局 */
@@ -1232,11 +1252,13 @@ export struct TradeView {
         // 历史现场：事件累积保留，可滑动回看；无事件时显示剧本简介
         Column() {
           Row() {
-            Text('历史现场')
+            Text(this.mode === 'random' ? '快讯' : '历史现场')
               .fontSize(11)
               .fontColor(AppConfig.COLOR_ACCENT)
             Blank()
-            Text(this.eventList.length > 0 ? `${this.eventList.length} 条 · 上下滑动回看` : '等待历史事件')
+            Text(this.mode === 'random'
+              ? (this.eventList.length > 0 ? `${this.eventList.length} 条 · 即将消失` : '等待快讯')
+              : (this.eventList.length > 0 ? `${this.eventList.length} 条 · 上下滑动回看` : '等待历史事件'))
               .fontSize(10)
               .fontColor(this.eventList.length > 0 ? '#8A8F99' : '#6B717C')
           }

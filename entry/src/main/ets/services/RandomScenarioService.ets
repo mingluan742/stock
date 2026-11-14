@@ -132,7 +132,7 @@ export class LiveRandomMarket {
     return events;
   }
 
-  /** 序列化（存档用） */
+  /** 序列化（存档用）：快讯不持久化，events 存空数组以减小体积 */
   serialize(): LiveSave {
     const out: LiveStockSave[] = [];
     for (let i = 0; i < this.stocks.length; i++) {
@@ -142,7 +142,7 @@ export class LiveRandomMarket {
         code: sp.code,
         name: sp.name,
         timeline: sp.timeline,
-        events: sp.events,
+        events: [],
         state: this.states[i]
       });
     }
